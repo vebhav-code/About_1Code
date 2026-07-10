@@ -86,16 +86,16 @@
 
       <article class="stage-card">
         <span class="stage-num">STAGE 02</span>
-        <h3>Locate the fault</h3>
-        <p>We reveal only the broken slice of code — not the file, not the repo. You confirm which of your hypotheses actually matches what's on screen.</p>
-        <span class="stage-tag">isolated snippet only</span>
+        <h3>Read the code</h3>
+        <p>A real 20-30 line block — not an isolated line. You read it the way you'd read a PR, checking your hypotheses against what's actually there.</p>
+        <span class="stage-tag">full working file</span>
       </article>
 
       <article class="stage-card">
         <span class="stage-num">STAGE 03</span>
-        <h3>Prompt it</h3>
-        <p>Write the prompt you'd hand an AI to fix this — for real, the one you'd actually type. Iterate as many times as you want. We score the chain, not just the last try.</p>
-        <span class="stage-tag">graded, not solved</span>
+        <h3>Fix it — three blocks</h3>
+        <p>01 the prompt you'd give an AI, 02 your reasoning for that prompt, 03 the fixed code you got back. All three get rated — not just whether the code runs.</p>
+        <span class="stage-tag">prompt + reasoning + code</span>
       </article>
     </div>
   </section>
@@ -114,8 +114,8 @@
         <span class="panel-title">scenario_04_sudden_logout.trace</span>
         <div class="demo-progress" id="demoProgress">
           <span class="step active" data-step="1">01 Diagnose</span>
-          <span class="step" data-step="2">02 Locate</span>
-          <span class="step" data-step="3">03 Prompt</span>
+          <span class="step" data-step="2">02 View code</span>
+          <span class="step" data-step="3">03 Fix it</span>
           <span class="step" data-step="4">04 Score</span>
         </div>
       </div>
@@ -138,35 +138,75 @@
           </div>
         </div>
 
-        <!-- STEP 2: LOCATE -->
+        <!-- STEP 2: VIEW CODE -->
         <div class="demo-step" data-step="2">
-          <p class="field-label">Here's the isolated snippet. Nothing else in the file changed.</p>
-          <pre class="code-block"><code><span class="ln">1</span>  function scheduleTokenRefresh(token) {
-<span class="ln">2</span>    const expiresIn = token.expiresIn; <span class="code-comment">// seconds, from auth server</span>
-<span class="ln">3</span>    <span class="code-err">setTimeout(() =&gt; refreshToken(), expiresIn);</span> <span class="code-flag">← fires once, in ms-expected API, given seconds</span>
-<span class="ln">4</span>    <span class="code-comment">// no retry, no clearTimeout on logout</span>
-<span class="ln">5</span>  }</code></pre>
-          <label class="field-label">Which hypothesis matched? (select one, or note a new one)</label>
-          <select class="text-input" id="matchSelect">
-            <option value="">— select —</option>
-            <option value="units">Timer unit mismatch (seconds passed where ms expected)</option>
-            <option value="race">Race condition between refresh and request queue</option>
-            <option value="storage">Token not persisted correctly across tab reload</option>
-            <option value="other">None of my hypotheses — new insight</option>
-          </select>
+          <p class="field-label">Here's the actual file. The bug (or bugs) are in here somewhere — read it the way you'd read a real PR.</p>
+          <pre class="code-block"><code><span class="ln">1</span>  class AuthService {
+<span class="ln">2</span>    constructor() {
+<span class="ln">3</span>      this.refreshTimer = null;
+<span class="ln">4</span>    }
+<span class="ln">5</span>
+<span class="ln">6</span>    async login(email, password) {
+<span class="ln">7</span>      const res = await fetch('/api/login', {
+<span class="ln">8</span>        method: 'POST',
+<span class="ln">9</span>        headers: { 'Content-Type': 'application/json' },
+<span class="ln">10</span>       body: JSON.stringify({ email, password })
+<span class="ln">11</span>     });
+<span class="ln">12</span>     const data = await res.json();
+<span class="ln">13</span>
+<span class="ln">14</span>     localStorage.setItem('access_token', data.token);
+<span class="ln">15</span>     localStorage.setItem('expires_in', data.expiresIn);
+<span class="ln">16</span>     this.scheduleRefresh(data.expiresIn);
+<span class="ln">17</span>     return data;
+<span class="ln">18</span>   }
+<span class="ln">19</span>
+<span class="ln">20</span>   scheduleRefresh(expiresIn) {
+<span class="ln">21</span>     <span class="code-comment">// expiresIn arrives from the server in seconds</span>
+<span class="ln">22</span>     <span class="code-err">this.refreshTimer = setTimeout(() => {</span>
+<span class="ln">23</span>       this.refreshToken();
+<span class="ln">24</span>     <span class="code-err">}, expiresIn);</span> <span class="code-flag">← setTimeout expects ms, expiresIn is seconds</span>
+<span class="ln">25</span>   }
+<span class="ln">26</span>
+<span class="ln">27</span>   async refreshToken() {
+<span class="ln">28</span>     const res = await fetch('/api/refresh', { method: 'POST' });
+<span class="ln">29</span>     const data = await res.json();
+<span class="ln">30</span>     localStorage.setItem('access_token', data.token);
+<span class="ln">31</span>     this.scheduleRefresh(data.expiresIn);
+<span class="ln">32</span>   }
+<span class="ln">33</span>
+<span class="ln">34</span>   <span class="code-err">logout() {</span>
+<span class="ln">35</span>     localStorage.removeItem('access_token');
+<span class="ln">36</span>     localStorage.removeItem('expires_in');
+<span class="ln">37</span>     <span class="code-comment">// refreshTimer is never cleared here</span>
+<span class="ln">38</span>   <span class="code-err">}</span> <span class="code-flag">← old timer keeps firing after logout</span>
+<span class="ln">39</span> }</code></pre>
           <div class="step-actions">
             <button class="btn-secondary" data-back="1" type="button">← Back</button>
-            <button class="btn btn-primary" id="toStep3" type="button">Write the prompt →</button>
+            <button class="btn btn-primary" id="toStep3" type="button">Fix it →</button>
           </div>
         </div>
 
-        <!-- STEP 3: PROMPT -->
+        <!-- STEP 3: FIX IT (prompt / why / code) -->
         <div class="demo-step" data-step="3">
-          <label class="field-label">Write the prompt(s) you'd send an AI to fix this. Add more if you'd iterate.</label>
-          <div id="promptInputs" class="dynamic-inputs">
-            <textarea class="text-input prompt-input" rows="3" placeholder="e.g. In this function, expiresIn is in seconds but setTimeout expects milliseconds, causing refresh to fire ~1000x too early on slow tokens. Fix the unit conversion and add clearTimeout on logout to prevent leaks."></textarea>
+          <p class="field-label">Fix it in three parts. This is what actually gets rated.</p>
+
+          <div id="fixRounds">
+            <div class="fix-round" data-round="1">
+              <span class="round-label">ATTEMPT 1</span>
+
+              <label class="block-label"><span class="block-tag">01</span> The prompt you'd give an AI</label>
+              <textarea class="text-input prompt-input" rows="3" placeholder="e.g. In scheduleRefresh, expiresIn is in seconds but setTimeout expects milliseconds — convert it. Also clear refreshTimer inside logout() so the old timer can't fire after the user signs out."></textarea>
+
+              <label class="block-label"><span class="block-tag">02</span> Why this prompt — your reasoning</label>
+              <textarea class="text-input why-input" rows="2" placeholder="e.g. The 40-second logout matches a seconds-value being read as milliseconds — that's ~1000x too fast. The missing clearTimeout is a separate leak that fires after logout."></textarea>
+
+              <label class="block-label"><span class="block-tag">03</span> The fixed code you got back</label>
+              <textarea class="text-input code-input" rows="6" placeholder="Paste the code the AI returned (or the fix you wrote yourself) here."></textarea>
+            </div>
           </div>
-          <button class="btn-add" id="addPrompt" type="button">+ Add another prompt attempt</button>
+
+          <button class="btn-add" id="addRound" type="button">+ Add another attempt (didn't work the first time)</button>
+
           <div class="step-actions">
             <button class="btn-secondary" data-back="2" type="button">← Back</button>
             <button class="btn btn-primary" id="toStep4" type="button">Get scored →</button>
