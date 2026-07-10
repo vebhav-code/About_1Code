@@ -3,278 +3,392 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>1Code — Diagnose first. Prompt second.</title>
-<meta name="description" content="1Code trains developers on the skill AI can't do for them: diagnosing a bug and writing the prompt that fixes it.">
+<title>1Code — One Problem. One AI Conversation. One Fix.</title>
+<meta name="description" content="1Code is an AI-native debugging platform. We don't test how fast you write code — we test how effectively you collaborate with AI to solve real bugs.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="grain"></div>
+<div class="bg-glow bg-glow-1" aria-hidden="true"></div>
+<div class="bg-glow bg-glow-2" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
 
+<!-- ============ NAV ============ -->
 <header class="nav">
   <div class="nav-inner">
-    <a href="#" class="logo">1<span class="logo-bracket">Code</span><span class="logo-cursor">_</span></a>
-    <nav class="nav-links">
-      <a href="#how-it-works">How it works</a>
-      <a href="#demo">Try a scenario</a>
-      <a href="#principles">Why this exists</a>
+    <a href="#" class="logo">1<span class="logo-accent">Code</span></a>
+    <nav class="nav-links" id="navLinks">
+      <a href="#what-is">What is 1Code</a>
+      <a href="#workflow">Workflow</a>
+      <a href="#challenge">Challenge</a>
+      <a href="#faq">FAQ</a>
     </nav>
-    <button class="btn btn-ghost">Sign in</button>
+    <div class="nav-actions">
+      <button class="btn btn-ghost">Sign in</button>
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
   </div>
 </header>
 
 <main>
 
-  <!-- HERO -->
+  <!-- ============ 1. HERO ============ -->
   <section class="hero">
-    <div class="hero-inner">
-      <div class="hero-content">
-        <span class="eyebrow">// diagnostic-first dev training</span>
-        <h1>Your AI can write<br>the fix. <span class="accent-underline">Can you write<br>the prompt?</span></h1>
-        <p class="hero-sub">
-          1Code doesn't grade your code — an AI can already write that.
-          It grades how you read a symptom, name the root cause, and
-          direct an AI to the correct fix. That's the skill the market
-          is short on.
-        </p>
-        <div class="hero-cta">
-          <a href="#demo" class="btn btn-primary">Run a scenario</a>
-          <a href="#how-it-works" class="btn-link">See how scoring works <span aria-hidden="true">→</span></a>
+    <div class="hero-inner reveal">
+      <span class="pill">// AI-native debugging platform</span>
+      <h1>One Problem.<br>One AI Conversation.<br><span class="grad-text">One Fix.</span></h1>
+      <p class="hero-desc">Learn debugging with AI, not by memorizing code.</p>
+      <div class="hero-cta">
+        <a href="#workflow" class="btn btn-primary">See How It Works</a>
+        <a href="#challenge" class="btn-link">Preview a challenge <span aria-hidden="true">→</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 2. WHAT IS 1CODE ============ -->
+  <section class="what-is" id="what-is">
+    <div class="section-head reveal">
+      <span class="eyebrow">// what is 1code</span>
+      <h2>Traditional platforms test coding.<br><span class="grad-text">1Code tests how you think.</span></h2>
+      <p class="section-sub">You solve realistic software bugs using AI, submit your AI conversation, and get rated on your debugging process — not your typing speed.</p>
+    </div>
+
+    <div class="what-grid">
+      <article class="glass-card reveal">
+        <div class="icon-badge">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 2L3 7v6c0 5 4 8.5 9 9 5-.5 9-4 9-9V7l-9-5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
-        <div class="hero-stats">
-          <div class="stat"><span class="stat-num">03</span><span class="stat-label">stages per scenario</span></div>
-          <div class="stat"><span class="stat-num">100</span><span class="stat-label">pt rubric, AI-graded</span></div>
-          <div class="stat"><span class="stat-num">∞</span><span class="stat-label">prompt attempts allowed</span></div>
+        <h3>Real bugs, not puzzles</h3>
+        <p>Every challenge is a realistic project with a real symptom — the kind you'd actually hit in production, not an algorithm riddle.</p>
+      </article>
+
+      <article class="glass-card reveal">
+        <div class="icon-badge">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 4h16v12H7l-3 3V4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 9h8M8 12h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </div>
+        <h3>Your AI conversation is the artifact</h3>
+        <p>Use ChatGPT, Claude, Gemini, Cursor, Copilot — whatever you'd actually reach for. We evaluate the conversation, not just the diff.</p>
+      </article>
+
+      <article class="glass-card reveal">
+        <div class="icon-badge">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M3 17l6-6 4 4 8-8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7h6v6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h3>Scored on process, not speed</h3>
+        <p>Problem understanding, prompt quality, AI collaboration, and correctness — each rated separately so you know exactly what to sharpen.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============ 3. WHY 1CODE ============ -->
+  <section class="why" id="why">
+    <div class="section-head reveal">
+      <span class="eyebrow">// why 1code</span>
+      <h2>Built for the way developers actually work now</h2>
+    </div>
+
+    <div class="compare-grid reveal">
+      <div class="compare-card compare-old">
+        <span class="compare-title">Traditional Platforms</span>
+        <ul class="compare-list">
+          <li><span class="mark mark-x">✕</span> Memorize syntax</li>
+          <li><span class="mark mark-x">✕</span> LeetCode-only puzzles</li>
+          <li><span class="mark mark-x">✕</span> Code-first grading</li>
+          <li><span class="mark mark-x">✕</span> AI discouraged or banned</li>
+        </ul>
+      </div>
+
+      <div class="compare-vs" aria-hidden="true">
+        <span>VS</span>
+      </div>
+
+      <div class="compare-card compare-new">
+        <span class="compare-title grad-text">1Code</span>
+        <ul class="compare-list">
+          <li><span class="mark mark-check">✓</span> Real-world debugging</li>
+          <li><span class="mark mark-check">✓</span> AI collaboration, fully allowed</li>
+          <li><span class="mark mark-check">✓</span> Problem solving, first</li>
+          <li><span class="mark mark-check">✓</span> Future-ready developer skills</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 4. WORKFLOW ============ -->
+  <section class="workflow" id="workflow">
+    <div class="section-head reveal">
+      <span class="eyebrow">// the workflow</span>
+      <h2>From symptom to score, in one AI-assisted sprint</h2>
+      <p class="section-sub">Twelve steps, one submission. Scroll to walk through it.</p>
+    </div>
+
+    <div class="workflow-path" id="workflowPath">
+
+      <div class="wf-step reveal" data-step="01">
+        <div class="wf-node"><span>01</span></div>
+        <div class="wf-card glass-card">
+          <h4>Login / Register</h4>
+          <p>Create your account and pick up where you left off — your rating persists per domain.</p>
         </div>
       </div>
 
-      <div class="hero-panel" aria-hidden="true">
-        <div class="panel-chrome">
-          <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
-          <span class="panel-title">incident_04.trace</span>
+      <div class="wf-step reveal" data-step="02">
+        <div class="wf-node"><span>02</span></div>
+        <div class="wf-card glass-card">
+          <h4>Choose your debugging mission</h4>
+          <p>Browse challenges by domain — Auth, Database, Performance, Security — and pick your difficulty.</p>
         </div>
-        <div class="panel-body">
-          <p class="log-line"><span class="log-tag tag-symptom">SYMPTOM</span> user session drops ~40s after login, no client error thrown</p>
-          <p class="log-line"><span class="log-tag tag-wait">DIAGNOSIS</span> <span class="typewriter" id="heroTypewriter"></span><span class="caret">|</span></p>
-          <svg class="trace-svg" viewBox="0 0 600 90" preserveAspectRatio="none">
-            <polyline id="traceLine" points="0,45 600,45" fill="none" stroke="#F5A623" stroke-width="2"/>
-          </svg>
-          <p class="log-line dim">status: awaiting root cause →</p>
+      </div>
+
+      <div class="wf-step reveal" data-step="03">
+        <div class="wf-node"><span>03</span></div>
+        <div class="wf-card glass-card">
+          <h4>Read the scenario</h4>
+          <p>Just the symptom. No code, no stack trace — the same way a real bug report reaches you.</p>
+        </div>
+      </div>
+
+      <div class="wf-step reveal" data-step="04">
+        <div class="wf-node"><span>04</span></div>
+        <div class="wf-card glass-card">
+          <h4>Write initial hypotheses</h4>
+          <p>List what you'd suspect first. This is where domain experience shows before you've seen a single line.</p>
+        </div>
+      </div>
+
+      <div class="wf-step reveal" data-step="05">
+        <div class="wf-node"><span>05</span></div>
+        <div class="wf-card glass-card">
+          <h4>Prioritize your hypotheses</h4>
+          <p>Rank them by likelihood — the order you'd actually investigate in, under time pressure.</p>
+        </div>
+      </div>
+
+      <div class="wf-step reveal" data-step="06">
+        <div class="wf-node"><span>06</span></div>
+        <div class="wf-card glass-card">
+          <h4>Download <code>challenge.zip</code></h4>
+          <p>A real local project drops onto your machine.</p>
+          <div class="file-tree">
+            <span class="file-row"><svg class="file-icon" viewBox="0 0 24 24" fill="none"><path d="M4 4h9l3 3v13H4V4z" stroke="currentColor" stroke-width="1.5"/></svg>buggy_project/</span>
+            <span class="file-row"><svg class="file-icon" viewBox="0 0 24 24" fill="none"><path d="M6 3h9l4 4v14H6V3z" stroke="currentColor" stroke-width="1.5"/></svg>README.md</span>
+            <span class="file-row"><svg class="file-icon" viewBox="0 0 24 24" fill="none"><path d="M6 3h9l4 4v14H6V3z" stroke="currentColor" stroke-width="1.5"/></svg>debug_log.txt</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wf-step reveal" data-step="07">
+        <div class="wf-node"><span>07</span></div>
+        <div class="wf-card glass-card">
+          <h4>Debug locally, with any AI tool</h4>
+          <p>ChatGPT, Gemini, Claude, Cursor, Copilot — your call. We care about how you use it, not which one.</p>
+          <div class="tool-chips">
+            <span class="chip">ChatGPT</span><span class="chip">Gemini</span><span class="chip">Claude</span><span class="chip">Cursor</span><span class="chip">Copilot</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wf-step reveal" data-step="08">
+        <div class="wf-node"><span>08</span></div>
+        <div class="wf-card glass-card">
+          <h4>Fill <code>debug_log.txt</code></h4>
+          <p>Paste every prompt you sent and every response you got back — the full trail, not just the winning one.</p>
+        </div>
+      </div>
+
+      <div class="wf-step reveal" data-step="09">
+        <div class="wf-node"><span>09</span></div>
+        <div class="wf-card glass-card">
+          <h4>Fix the bug</h4>
+          <p>Apply the fix locally until the symptom is actually gone.</p>
+        </div>
+      </div>
+
+      <div class="wf-step reveal" data-step="10">
+        <div class="wf-node"><span>10</span></div>
+        <div class="wf-card glass-card">
+          <h4>Create <code>submission.zip</code></h4>
+          <p>Package your work for grading.</p>
+          <div class="file-tree">
+            <span class="file-row"><svg class="file-icon" viewBox="0 0 24 24" fill="none"><path d="M4 4h9l3 3v13H4V4z" stroke="currentColor" stroke-width="1.5"/></svg>fixed_project.zip</span>
+            <span class="file-row"><svg class="file-icon" viewBox="0 0 24 24" fill="none"><path d="M6 3h9l4 4v14H6V3z" stroke="currentColor" stroke-width="1.5"/></svg>debug_log.txt</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wf-step reveal" data-step="11">
+        <div class="wf-node"><span>11</span></div>
+        <div class="wf-card glass-card">
+          <h4>Upload submission</h4>
+          <p>One shot, one upload. That constraint is intentional — it's what makes the rating mean something.</p>
+        </div>
+      </div>
+
+      <div class="wf-step reveal" data-step="12">
+        <div class="wf-node"><span>12</span></div>
+        <div class="wf-card glass-card">
+          <h4>AI evaluation → Score report → Leaderboard</h4>
+          <p>Your process gets graded across four dimensions, and your domain rating updates.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ 5. CHALLENGE PREVIEW ============ -->
+  <section class="challenge" id="challenge">
+    <div class="section-head reveal">
+      <span class="eyebrow">// challenge preview</span>
+      <h2>What a mission actually looks like</h2>
+    </div>
+
+    <div class="challenge-card glass-card reveal">
+      <div class="challenge-top">
+        <span class="challenge-id">AUTH-001</span>
+        <span class="badge badge-medium">Medium</span>
+      </div>
+      <p class="challenge-scenario">
+        Users can successfully log in. After approximately 40 seconds, they
+        are automatically logged out.
+      </p>
+      <div class="challenge-meta">
+        <span><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg> 45 minute limit</span>
+        <span><svg viewBox="0 0 24 24" fill="none"><path d="M4 4h16v16H4z" stroke="currentColor" stroke-width="1.6"/><path d="M4 9h16" stroke="currentColor" stroke-width="1.6"/></svg> Domain: Auth</span>
+      </div>
+      <button class="btn btn-primary btn-download" id="downloadBtn">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Download challenge.zip
+      </button>
+    </div>
+  </section>
+
+  <!-- ============ 6. SUBMISSION PREVIEW ============ -->
+  <section class="submission">
+    <div class="section-head reveal">
+      <span class="eyebrow">// submission preview</span>
+      <h2>Package it up when you're done</h2>
+    </div>
+
+    <div class="upload-card glass-card reveal" id="uploadCard">
+      <div class="upload-icon">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7 9m5-5l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </div>
+      <span class="upload-filename">submission.zip</span>
+      <div class="file-tree file-tree-center">
+        <span class="file-row"><svg class="file-icon" viewBox="0 0 24 24" fill="none"><path d="M4 4h9l3 3v13H4V4z" stroke="currentColor" stroke-width="1.5"/></svg>fixed_project.zip</span>
+        <span class="file-row"><svg class="file-icon" viewBox="0 0 24 24" fill="none"><path d="M6 3h9l4 4v14H6V3z" stroke="currentColor" stroke-width="1.5"/></svg>debug_log.txt</span>
+      </div>
+      <p class="upload-hint">Drag &amp; drop, or click to browse</p>
+    </div>
+  </section>
+
+  <!-- ============ 7. AI EVALUATION PREVIEW ============ -->
+  <section class="evaluation" id="evaluation">
+    <div class="section-head reveal">
+      <span class="eyebrow">// ai evaluation</span>
+      <h2>Your score report</h2>
+    </div>
+
+    <div class="eval-dashboard glass-card reveal" id="evalDashboard">
+      <div class="eval-bars">
+        <div class="eval-row">
+          <div class="eval-label"><span>Problem Understanding</span><span class="eval-pct" data-target="92">0%</span></div>
+          <div class="eval-track"><div class="eval-fill" data-target="92"></div></div>
+        </div>
+        <div class="eval-row">
+          <div class="eval-label"><span>Prompt Quality</span><span class="eval-pct" data-target="88">0%</span></div>
+          <div class="eval-track"><div class="eval-fill" data-target="88"></div></div>
+        </div>
+        <div class="eval-row">
+          <div class="eval-label"><span>AI Collaboration</span><span class="eval-pct" data-target="95">0%</span></div>
+          <div class="eval-track"><div class="eval-fill" data-target="95"></div></div>
+        </div>
+        <div class="eval-row">
+          <div class="eval-label"><span>Code Correctness</span><span class="eval-pct" data-target="90">0%</span></div>
+          <div class="eval-track"><div class="eval-fill" data-target="90"></div></div>
+        </div>
+      </div>
+
+      <div class="eval-summary">
+        <div class="eval-overall">
+          <span class="eval-overall-num" id="overallScore">0</span><span class="eval-overall-max">/100</span>
+          <span class="eval-overall-label">Overall Score</span>
+        </div>
+        <div class="eval-rank">
+          <span class="rank-badge">Top 12%</span>
+          <span class="eval-overall-label">Leaderboard Rank</span>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- HOW IT WORKS -->
-  <section class="stages" id="how-it-works">
-    <div class="section-head">
-      <span class="eyebrow">// the loop</span>
-      <h2>Every scenario runs the same three stages</h2>
-      <p class="section-sub">Order matters — you diagnose before you see the fix path, and you prompt before anything gets auto-solved for you.</p>
+  <!-- ============ 8. FAQ ============ -->
+  <section class="faq" id="faq">
+    <div class="section-head reveal">
+      <span class="eyebrow">// faq</span>
+      <h2>Questions, answered</h2>
     </div>
 
-    <div class="stage-grid">
-      <article class="stage-card">
-        <span class="stage-num">STAGE 01</span>
-        <h3>Diagnose</h3>
-        <p>You're given a symptom only — no code, no stack trace. List 3–4 root causes you'd actually suspect, in order of likelihood. This is where domain experience shows.</p>
-        <span class="stage-tag">no code shown yet</span>
-      </article>
-
-      <article class="stage-card">
-        <span class="stage-num">STAGE 02</span>
-        <h3>Read the code</h3>
-        <p>A real 20-30 line block — not an isolated line. You read it the way you'd read a PR, checking your hypotheses against what's actually there.</p>
-        <span class="stage-tag">full working file</span>
-      </article>
-
-      <article class="stage-card">
-        <span class="stage-num">STAGE 03</span>
-        <h3>Fix it — three blocks</h3>
-        <p>01 the prompt you'd give an AI, 02 your reasoning for that prompt, 03 the fixed code you got back. All three get rated — not just whether the code runs.</p>
-        <span class="stage-tag">prompt + reasoning + code</span>
-      </article>
-    </div>
-  </section>
-
-  <!-- INTERACTIVE DEMO -->
-  <section class="demo" id="demo">
-    <div class="section-head">
-      <span class="eyebrow">// try it</span>
-      <h2>Scenario 04 — Sudden logout</h2>
-      <p class="section-sub">This is a real 1Code scenario, running client-side. No account needed to try the flow.</p>
-    </div>
-
-    <div class="demo-shell">
-      <div class="demo-topbar">
-        <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
-        <span class="panel-title">scenario_04_sudden_logout.trace</span>
-        <div class="demo-progress" id="demoProgress">
-          <span class="step active" data-step="1">01 Diagnose</span>
-          <span class="step" data-step="2">02 View code</span>
-          <span class="step" data-step="3">03 Fix it</span>
-          <span class="step" data-step="4">04 Score</span>
-        </div>
+    <div class="faq-list reveal" id="faqList">
+      <div class="faq-item">
+        <button class="faq-question">Why only one attempt? <span class="faq-icon">+</span></button>
+        <div class="faq-answer"><p>One submission is what makes the score mean something. It mirrors a real incident — you don't get to retry production.</p></div>
       </div>
-
-      <div class="demo-body">
-
-        <!-- STEP 1: DIAGNOSE -->
-        <div class="demo-step active" data-step="1">
-          <p class="symptom-box">
-            <span class="log-tag tag-symptom">SYMPTOM</span>
-            Users report being logged out ~40 seconds after a successful login, seemingly at random. No error is shown client-side. Happens more on slower connections.
-          </p>
-          <label class="field-label">Your hypotheses — what would you check first?</label>
-          <div id="diagnosisInputs" class="dynamic-inputs">
-            <input type="text" class="text-input diagnosis-input" placeholder="e.g. token expiry set shorter than session refresh interval">
-          </div>
-          <button class="btn-add" id="addDiagnosis" type="button">+ Add another hypothesis</button>
-          <div class="step-actions">
-            <button class="btn btn-primary" id="toStep2" type="button">Reveal the code →</button>
-          </div>
-        </div>
-
-        <!-- STEP 2: VIEW CODE -->
-        <div class="demo-step" data-step="2">
-          <p class="field-label">Here's the actual file. The bug (or bugs) are in here somewhere — read it the way you'd read a real PR.</p>
-          <pre class="code-block"><code><span class="ln">1</span>  class AuthService {
-<span class="ln">2</span>    constructor() {
-<span class="ln">3</span>      this.refreshTimer = null;
-<span class="ln">4</span>    }
-<span class="ln">5</span>
-<span class="ln">6</span>    async login(email, password) {
-<span class="ln">7</span>      const res = await fetch('/api/login', {
-<span class="ln">8</span>        method: 'POST',
-<span class="ln">9</span>        headers: { 'Content-Type': 'application/json' },
-<span class="ln">10</span>       body: JSON.stringify({ email, password })
-<span class="ln">11</span>     });
-<span class="ln">12</span>     const data = await res.json();
-<span class="ln">13</span>
-<span class="ln">14</span>     localStorage.setItem('access_token', data.token);
-<span class="ln">15</span>     localStorage.setItem('expires_in', data.expiresIn);
-<span class="ln">16</span>     this.scheduleRefresh(data.expiresIn);
-<span class="ln">17</span>     return data;
-<span class="ln">18</span>   }
-<span class="ln">19</span>
-<span class="ln">20</span>   scheduleRefresh(expiresIn) {
-<span class="ln">21</span>     <span class="code-comment">// expiresIn arrives from the server in seconds</span>
-<span class="ln">22</span>     <span class="code-err">this.refreshTimer = setTimeout(() => {</span>
-<span class="ln">23</span>       this.refreshToken();
-<span class="ln">24</span>     <span class="code-err">}, expiresIn);</span> <span class="code-flag">← setTimeout expects ms, expiresIn is seconds</span>
-<span class="ln">25</span>   }
-<span class="ln">26</span>
-<span class="ln">27</span>   async refreshToken() {
-<span class="ln">28</span>     const res = await fetch('/api/refresh', { method: 'POST' });
-<span class="ln">29</span>     const data = await res.json();
-<span class="ln">30</span>     localStorage.setItem('access_token', data.token);
-<span class="ln">31</span>     this.scheduleRefresh(data.expiresIn);
-<span class="ln">32</span>   }
-<span class="ln">33</span>
-<span class="ln">34</span>   <span class="code-err">logout() {</span>
-<span class="ln">35</span>     localStorage.removeItem('access_token');
-<span class="ln">36</span>     localStorage.removeItem('expires_in');
-<span class="ln">37</span>     <span class="code-comment">// refreshTimer is never cleared here</span>
-<span class="ln">38</span>   <span class="code-err">}</span> <span class="code-flag">← old timer keeps firing after logout</span>
-<span class="ln">39</span> }</code></pre>
-          <div class="step-actions">
-            <button class="btn-secondary" data-back="1" type="button">← Back</button>
-            <button class="btn btn-primary" id="toStep3" type="button">Fix it →</button>
-          </div>
-        </div>
-
-        <!-- STEP 3: FIX IT (prompt / why / code) -->
-        <div class="demo-step" data-step="3">
-          <p class="field-label">Fix it in three parts. This is what actually gets rated.</p>
-
-          <div id="fixRounds">
-            <div class="fix-round" data-round="1">
-              <span class="round-label">ATTEMPT 1</span>
-
-              <label class="block-label"><span class="block-tag">01</span> The prompt you'd give an AI</label>
-              <textarea class="text-input prompt-input" rows="3" placeholder="e.g. In scheduleRefresh, expiresIn is in seconds but setTimeout expects milliseconds — convert it. Also clear refreshTimer inside logout() so the old timer can't fire after the user signs out."></textarea>
-
-              <label class="block-label"><span class="block-tag">02</span> Why this prompt — your reasoning</label>
-              <textarea class="text-input why-input" rows="2" placeholder="e.g. The 40-second logout matches a seconds-value being read as milliseconds — that's ~1000x too fast. The missing clearTimeout is a separate leak that fires after logout."></textarea>
-
-              <label class="block-label"><span class="block-tag">03</span> The fixed code you got back</label>
-              <textarea class="text-input code-input" rows="6" placeholder="Paste the code the AI returned (or the fix you wrote yourself) here."></textarea>
-            </div>
-          </div>
-
-          <button class="btn-add" id="addRound" type="button">+ Add another attempt (didn't work the first time)</button>
-
-          <div class="step-actions">
-            <button class="btn-secondary" data-back="2" type="button">← Back</button>
-            <button class="btn btn-primary" id="toStep4" type="button">Get scored →</button>
-          </div>
-        </div>
-
-        <!-- STEP 4: SCORE -->
-        <div class="demo-step" data-step="4">
-          <div class="score-reveal">
-            <div class="score-ring">
-              <span class="score-num" id="scoreNum">0</span>
-              <span class="score-max">/100</span>
-            </div>
-            <div class="score-feedback">
-              <h4 id="scoreHeadline">Grading your approach…</h4>
-              <ul class="score-list" id="scoreList"></ul>
-            </div>
-          </div>
-          <div class="step-actions">
-            <button class="btn-secondary" id="restartDemo" type="button">↺ Try another scenario</button>
-          </div>
-        </div>
-
+      <div class="faq-item">
+        <button class="faq-question">Can I use ChatGPT? <span class="faq-icon">+</span></button>
+        <div class="faq-answer"><p>Yes — any AI tool is allowed. We evaluate your process, not the tool you picked.</p></div>
       </div>
-    </div>
-  </section>
-
-  <!-- POSITIONING -->
-  <section class="principles" id="principles">
-    <div class="principles-inner">
-      <div class="principles-text">
-        <span class="eyebrow">// why this exists</span>
-        <h2>AI made code cheap.<br>It made judgment expensive.</h2>
-        <p>
-          Every junior dev now ships code an AI wrote. That code compiles,
-          passes lint, and is often correct on the first try. The bottleneck
-          moved — from typing the fix to knowing what's actually broken and
-          telling the AI precisely enough to trust the output.
-        </p>
-        <p>
-          1Code is built for that bottleneck. We never ask you to write
-          working code. We ask you to think like the engineer who's read
-          this exact bug before — and to prove it in the prompt.
-        </p>
+      <div class="faq-item">
+        <button class="faq-question">Can I use Gemini? <span class="faq-icon">+</span></button>
+        <div class="faq-answer"><p>Yes. Gemini, Claude, Cursor, Copilot — whatever's in your normal workflow.</p></div>
       </div>
-      <div class="principles-list">
-        <div class="principle-item">
-          <span class="principle-mark">01</span>
-          <div><h4>No code grading</h4><p>We never score syntax. Only diagnosis quality and prompt precision.</p></div>
-        </div>
-        <div class="principle-item">
-          <span class="principle-mark">02</span>
-          <div><h4>Rewards iteration</h4><p>Submit 1 prompt or 5 — refining your ask based on likely output is part of the score.</p></div>
-        </div>
-        <div class="principle-item">
-          <span class="principle-mark">03</span>
-          <div><h4>Domain-specific ratings</h4><p>Your auth-bug rating is tracked separately from your DB or perf rating.</p></div>
-        </div>
+      <div class="faq-item">
+        <button class="faq-question">Can I use Cursor? <span class="faq-icon">+</span></button>
+        <div class="faq-answer"><p>Yes — in-editor AI tools are fully allowed, as long as your <code>debug_log.txt</code> captures the prompts and responses.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question">Can I use Claude? <span class="faq-icon">+</span></button>
+        <div class="faq-answer"><p>Yes. Any model, any interface — the constraint is on what you submit, not what you use to get there.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question">Why do I need to upload debug_log.txt? <span class="faq-icon">+</span></button>
+        <div class="faq-answer"><p>It's the actual artifact we grade. Your fixed code shows the outcome — the log shows the thinking that got you there.</p></div>
       </div>
     </div>
   </section>
 
 </main>
 
+<!-- ============ 9. FOOTER ============ -->
 <footer class="footer">
   <div class="footer-inner">
-    <span class="logo footer-logo">1<span class="logo-bracket">Code</span></span>
-    <p>Built for developers who got tired of grading code that's always right.</p>
+    <div class="footer-brand">
+      <span class="logo">1<span class="logo-accent">Code</span></span>
+      <p>Debugging, the way it actually works now.</p>
+    </div>
+    <div class="footer-cols">
+      <div class="footer-col">
+        <span class="footer-heading">Product</span>
+        <a href="#workflow">Workflow</a>
+        <a href="#challenge">Challenges</a>
+        <a href="#faq">FAQ</a>
+      </div>
+      <div class="footer-col">
+        <span class="footer-heading">Company</span>
+        <a href="#">About</a>
+        <a href="#">Contact</a>
+        <a href="#">Future Features</a>
+      </div>
+      <div class="footer-col">
+        <span class="footer-heading">Connect</span>
+        <a href="#">GitHub</a>
+      </div>
+    </div>
   </div>
 </footer>
 
