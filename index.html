@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1Code — Diagnose first. Prompt second.</title>
+<meta name="description" content="1Code trains developers on the skill AI can't do for them: diagnosing a bug and writing the prompt that fixes it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="grain"></div>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a href="#" class="logo">1<span class="logo-bracket">Code</span><span class="logo-cursor">_</span></a>
+    <nav class="nav-links">
+      <a href="#how-it-works">How it works</a>
+      <a href="#demo">Try a scenario</a>
+      <a href="#principles">Why this exists</a>
+    </nav>
+    <button class="btn btn-ghost">Sign in</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-content">
+        <span class="eyebrow">// diagnostic-first dev training</span>
+        <h1>Your AI can write<br>the fix. <span class="accent-underline">Can you write<br>the prompt?</span></h1>
+        <p class="hero-sub">
+          1Code doesn't grade your code — an AI can already write that.
+          It grades how you read a symptom, name the root cause, and
+          direct an AI to the correct fix. That's the skill the market
+          is short on.
+        </p>
+        <div class="hero-cta">
+          <a href="#demo" class="btn btn-primary">Run a scenario</a>
+          <a href="#how-it-works" class="btn-link">See how scoring works <span aria-hidden="true">→</span></a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat"><span class="stat-num">03</span><span class="stat-label">stages per scenario</span></div>
+          <div class="stat"><span class="stat-num">100</span><span class="stat-label">pt rubric, AI-graded</span></div>
+          <div class="stat"><span class="stat-num">∞</span><span class="stat-label">prompt attempts allowed</span></div>
+        </div>
+      </div>
+
+      <div class="hero-panel" aria-hidden="true">
+        <div class="panel-chrome">
+          <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+          <span class="panel-title">incident_04.trace</span>
+        </div>
+        <div class="panel-body">
+          <p class="log-line"><span class="log-tag tag-symptom">SYMPTOM</span> user session drops ~40s after login, no client error thrown</p>
+          <p class="log-line"><span class="log-tag tag-wait">DIAGNOSIS</span> <span class="typewriter" id="heroTypewriter"></span><span class="caret">|</span></p>
+          <svg class="trace-svg" viewBox="0 0 600 90" preserveAspectRatio="none">
+            <polyline id="traceLine" points="0,45 600,45" fill="none" stroke="#F5A623" stroke-width="2"/>
+          </svg>
+          <p class="log-line dim">status: awaiting root cause →</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="stages" id="how-it-works">
+    <div class="section-head">
+      <span class="eyebrow">// the loop</span>
+      <h2>Every scenario runs the same three stages</h2>
+      <p class="section-sub">Order matters — you diagnose before you see the fix path, and you prompt before anything gets auto-solved for you.</p>
+    </div>
+
+    <div class="stage-grid">
+      <article class="stage-card">
+        <span class="stage-num">STAGE 01</span>
+        <h3>Diagnose</h3>
+        <p>You're given a symptom only — no code, no stack trace. List 3–4 root causes you'd actually suspect, in order of likelihood. This is where domain experience shows.</p>
+        <span class="stage-tag">no code shown yet</span>
+      </article>
+
+      <article class="stage-card">
+        <span class="stage-num">STAGE 02</span>
+        <h3>Locate the fault</h3>
+        <p>We reveal only the broken slice of code — not the file, not the repo. You confirm which of your hypotheses actually matches what's on screen.</p>
+        <span class="stage-tag">isolated snippet only</span>
+      </article>
+
+      <article class="stage-card">
+        <span class="stage-num">STAGE 03</span>
+        <h3>Prompt it</h3>
+        <p>Write the prompt you'd hand an AI to fix this — for real, the one you'd actually type. Iterate as many times as you want. We score the chain, not just the last try.</p>
+        <span class="stage-tag">graded, not solved</span>
+      </article>
+    </div>
+  </section>
+
+  <!-- INTERACTIVE DEMO -->
+  <section class="demo" id="demo">
+    <div class="section-head">
+      <span class="eyebrow">// try it</span>
+      <h2>Scenario 04 — Sudden logout</h2>
+      <p class="section-sub">This is a real 1Code scenario, running client-side. No account needed to try the flow.</p>
+    </div>
+
+    <div class="demo-shell">
+      <div class="demo-topbar">
+        <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+        <span class="panel-title">scenario_04_sudden_logout.trace</span>
+        <div class="demo-progress" id="demoProgress">
+          <span class="step active" data-step="1">01 Diagnose</span>
+          <span class="step" data-step="2">02 Locate</span>
+          <span class="step" data-step="3">03 Prompt</span>
+          <span class="step" data-step="4">04 Score</span>
+        </div>
+      </div>
+
+      <div class="demo-body">
+
+        <!-- STEP 1: DIAGNOSE -->
+        <div class="demo-step active" data-step="1">
+          <p class="symptom-box">
+            <span class="log-tag tag-symptom">SYMPTOM</span>
+            Users report being logged out ~40 seconds after a successful login, seemingly at random. No error is shown client-side. Happens more on slower connections.
+          </p>
+          <label class="field-label">Your hypotheses — what would you check first?</label>
+          <div id="diagnosisInputs" class="dynamic-inputs">
+            <input type="text" class="text-input diagnosis-input" placeholder="e.g. token expiry set shorter than session refresh interval">
+          </div>
+          <button class="btn-add" id="addDiagnosis" type="button">+ Add another hypothesis</button>
+          <div class="step-actions">
+            <button class="btn btn-primary" id="toStep2" type="button">Reveal the code →</button>
+          </div>
+        </div>
+
+        <!-- STEP 2: LOCATE -->
+        <div class="demo-step" data-step="2">
+          <p class="field-label">Here's the isolated snippet. Nothing else in the file changed.</p>
+          <pre class="code-block"><code><span class="ln">1</span>  function scheduleTokenRefresh(token) {
+<span class="ln">2</span>    const expiresIn = token.expiresIn; <span class="code-comment">// seconds, from auth server</span>
+<span class="ln">3</span>    <span class="code-err">setTimeout(() =&gt; refreshToken(), expiresIn);</span> <span class="code-flag">← fires once, in ms-expected API, given seconds</span>
+<span class="ln">4</span>    <span class="code-comment">// no retry, no clearTimeout on logout</span>
+<span class="ln">5</span>  }</code></pre>
+          <label class="field-label">Which hypothesis matched? (select one, or note a new one)</label>
+          <select class="text-input" id="matchSelect">
+            <option value="">— select —</option>
+            <option value="units">Timer unit mismatch (seconds passed where ms expected)</option>
+            <option value="race">Race condition between refresh and request queue</option>
+            <option value="storage">Token not persisted correctly across tab reload</option>
+            <option value="other">None of my hypotheses — new insight</option>
+          </select>
+          <div class="step-actions">
+            <button class="btn-secondary" data-back="1" type="button">← Back</button>
+            <button class="btn btn-primary" id="toStep3" type="button">Write the prompt →</button>
+          </div>
+        </div>
+
+        <!-- STEP 3: PROMPT -->
+        <div class="demo-step" data-step="3">
+          <label class="field-label">Write the prompt(s) you'd send an AI to fix this. Add more if you'd iterate.</label>
+          <div id="promptInputs" class="dynamic-inputs">
+            <textarea class="text-input prompt-input" rows="3" placeholder="e.g. In this function, expiresIn is in seconds but setTimeout expects milliseconds, causing refresh to fire ~1000x too early on slow tokens. Fix the unit conversion and add clearTimeout on logout to prevent leaks."></textarea>
+          </div>
+          <button class="btn-add" id="addPrompt" type="button">+ Add another prompt attempt</button>
+          <div class="step-actions">
+            <button class="btn-secondary" data-back="2" type="button">← Back</button>
+            <button class="btn btn-primary" id="toStep4" type="button">Get scored →</button>
+          </div>
+        </div>
+
+        <!-- STEP 4: SCORE -->
+        <div class="demo-step" data-step="4">
+          <div class="score-reveal">
+            <div class="score-ring">
+              <span class="score-num" id="scoreNum">0</span>
+              <span class="score-max">/100</span>
+            </div>
+            <div class="score-feedback">
+              <h4 id="scoreHeadline">Grading your approach…</h4>
+              <ul class="score-list" id="scoreList"></ul>
+            </div>
+          </div>
+          <div class="step-actions">
+            <button class="btn-secondary" id="restartDemo" type="button">↺ Try another scenario</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- POSITIONING -->
+  <section class="principles" id="principles">
+    <div class="principles-inner">
+      <div class="principles-text">
+        <span class="eyebrow">// why this exists</span>
+        <h2>AI made code cheap.<br>It made judgment expensive.</h2>
+        <p>
+          Every junior dev now ships code an AI wrote. That code compiles,
+          passes lint, and is often correct on the first try. The bottleneck
+          moved — from typing the fix to knowing what's actually broken and
+          telling the AI precisely enough to trust the output.
+        </p>
+        <p>
+          1Code is built for that bottleneck. We never ask you to write
+          working code. We ask you to think like the engineer who's read
+          this exact bug before — and to prove it in the prompt.
+        </p>
+      </div>
+      <div class="principles-list">
+        <div class="principle-item">
+          <span class="principle-mark">01</span>
+          <div><h4>No code grading</h4><p>We never score syntax. Only diagnosis quality and prompt precision.</p></div>
+        </div>
+        <div class="principle-item">
+          <span class="principle-mark">02</span>
+          <div><h4>Rewards iteration</h4><p>Submit 1 prompt or 5 — refining your ask based on likely output is part of the score.</p></div>
+        </div>
+        <div class="principle-item">
+          <span class="principle-mark">03</span>
+          <div><h4>Domain-specific ratings</h4><p>Your auth-bug rating is tracked separately from your DB or perf rating.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <span class="logo footer-logo">1<span class="logo-bracket">Code</span></span>
+    <p>Built for developers who got tired of grading code that's always right.</p>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
