@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>1Code — One Problem. One AI Conversation. One Fix.</title>
+    <meta
+      name="description"
+      content="1Code is an AI-native debugging platform. We don't test how fast you write code — we test how effectively you collaborate with AI to solve real bugs."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="bg-glow bg-glow-1" aria-hidden="true"></div>
+    <div class="bg-glow bg-glow-2" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <!-- ============ NAV ============ -->
+    <header class="nav">
+      <div class="nav-inner">
+        <a href="#" class="logo">1<span class="logo-accent">Code</span></a>
+        <nav class="nav-links" id="navLinks">
+          <a href="#what-is">What is 1Code</a>
+          <a href="#workflow">Workflow</a>
+          <a href="#challenge">Challenge</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+        <div class="nav-actions">
+          <a href="contest.html" class="btn btn-primary" id="challengeBtn"
+            >Challenge</a
+          >
+
+          <a href="auth.html" class="btn btn-ghost">Sign In</a>
+
+          <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- ============ 1. HERO ============ -->
+      <section class="hero">
+        <div class="hero-inner reveal">
+          <span class="pill">// AI-native debugging platform</span>
+          <h1>
+            One Problem.<br />One AI Conversation.<br /><span class="grad-text"
+              >One Fix.</span
+            >
+          </h1>
+          <p class="hero-desc">
+            Learn debugging with AI, not by memorizing code.
+          </p>
+          <div class="hero-cta">
+            <a href="#workflow" class="btn btn-primary">See How It Works</a>
+            <a href="#challenge" class="btn-link"
+              >Preview a challenge <span aria-hidden="true">→</span></a
+            >
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 2. WHAT IS 1CODE ============ -->
+      <section class="what-is" id="what-is">
+        <div class="section-head reveal">
+          <span class="eyebrow">// what is 1code</span>
+          <h2>
+            Traditional platforms test coding.<br /><span class="grad-text"
+              >1Code tests how you think.</span
+            >
+          </h2>
+          <p class="section-sub">
+            You solve realistic software bugs using AI, submit your AI
+            conversation, and get rated on your debugging process — not your
+            typing speed.
+          </p>
+        </div>
+
+        <div class="what-grid">
+          <article class="glass-card reveal">
+            <div class="icon-badge">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M12 2L3 7v6c0 5 4 8.5 9 9 5-.5 9-4 9-9V7l-9-5z"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M9 12l2 2 4-4"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </div>
+            <h3>Real bugs, not puzzles</h3>
+            <p>
+              Every challenge is a realistic project with a real symptom — the
+              kind you'd actually hit in production, not an algorithm riddle.
+            </p>
+          </article>
+
+          <article class="glass-card reveal">
+            <div class="icon-badge">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M4 4h16v12H7l-3 3V4z"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M8 9h8M8 12h5"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </div>
+            <h3>Your AI conversation is the artifact</h3>
+            <p>
+              Chat directly with the built-in AI assistant in your browser workspace.
+              We evaluate your debugging transcript and code changes together.
+            </p>
+          </article>
+
+          <article class="glass-card reveal">
+            <div class="icon-badge">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M3 17l6-6 4 4 8-8"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M15 7h6v6"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </div>
+            <h3>Scored on process, not speed</h3>
+            <p>
+              Problem understanding, prompt quality, AI collaboration, and
+              correctness — each rated separately so you know exactly what to
+              sharpen.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ 3. WHY 1CODE ============ -->
+      <section class="why" id="why">
+        <div class="section-head reveal">
+          <span class="eyebrow">// why 1code</span>
+          <h2>Built for the way developers actually work now</h2>
+        </div>
+
+        <div class="compare-grid reveal">
+          <div class="compare-card compare-old">
+            <span class="compare-title">Traditional Platforms</span>
+            <ul class="compare-list">
+              <li><span class="mark mark-x">✕</span> Memorize syntax</li>
+              <li><span class="mark mark-x">✕</span> LeetCode-only puzzles</li>
+              <li><span class="mark mark-x">✕</span> Code-first grading</li>
+              <li>
+                <span class="mark mark-x">✕</span> AI discouraged or banned
+              </li>
+            </ul>
+          </div>
+
+          <div class="compare-vs" aria-hidden="true">
+            <span>VS</span>
+          </div>
+
+          <div class="compare-card compare-new">
+            <span class="compare-title grad-text">1Code</span>
+            <ul class="compare-list">
+              <li>
+                <span class="mark mark-check">✓</span> Real-world debugging
+              </li>
+              <li>
+                <span class="mark mark-check">✓</span> AI collaboration, fully
+                allowed
+              </li>
+              <li>
+                <span class="mark mark-check">✓</span> Problem solving, first
+              </li>
+              <li>
+                <span class="mark mark-check">✓</span> Future-ready developer
+                skills
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 4. WORKFLOW ============ -->
+      <section class="workflow" id="workflow">
+        <div class="section-head reveal">
+          <span class="eyebrow">// the workflow</span>
+          <h2>From symptom to score in the in-browser workspace</h2>
+          <p class="section-sub">
+            Nine steps, zero file uploads. Scroll to walk through it.
+          </p>
+        </div>
+
+        <div class="workflow-path" id="workflowPath">
+          <div class="wf-step reveal" data-step="01">
+            <div class="wf-node"><span>01</span></div>
+            <div class="wf-card glass-card">
+              <h4>Login / Register</h4>
+              <p>
+                Create your account and pick up where you left off — your rating
+                persists per domain.
+              </p>
+            </div>
+          </div>
+
+          <div class="wf-step reveal" data-step="02">
+            <div class="wf-node"><span>02</span></div>
+            <div class="wf-card glass-card">
+              <h4>Choose a debugging mission</h4>
+              <p>
+                Browse challenges by domain — Auth, Database, Performance,
+                Security — and pick your difficulty.
+              </p>
+            </div>
+          </div>
+
+          <div class="wf-step reveal" data-step="03">
+            <div class="wf-node"><span>03</span></div>
+            <div class="wf-card glass-card">
+              <h4>Read the scenario</h4>
+              <p>
+                Review the bug symptom and scenario — just like a real
+                production ticket.
+              </p>
+            </div>
+          </div>
+
+          <div class="wf-step reveal" data-step="04">
+            <div class="wf-node"><span>04</span></div>
+            <div class="wf-card glass-card">
+              <h4>Start the challenge</h4>
+              <p>
+                Opens the in-browser workspace with the buggy code pre-loaded in an editor and a live AI chat panel alongside it.
+              </p>
+            </div>
+          </div>
+
+          <div class="wf-step reveal" data-step="05">
+            <div class="wf-node"><span>05</span></div>
+            <div class="wf-card glass-card">
+              <h4>Debug directly in the browser</h4>
+              <p>
+                Edit the code, ask the AI chat for help, both are saved automatically as you go.
+              </p>
+            </div>
+          </div>
+
+          <div class="wf-step reveal" data-step="06">
+            <div class="wf-node"><span>06</span></div>
+            <div class="wf-card glass-card">
+              <h4>Submit when ready</h4>
+              <p>
+                Submit when ready (or when the timer runs out).
+              </p>
+            </div>
+          </div>
+
+          <div class="wf-step reveal" data-step="07">
+            <div class="wf-node"><span>07</span></div>
+            <div class="wf-card glass-card">
+              <h4>AI evaluation</h4>
+              <p>
+                Gemini grades your session's real code and real chat transcript.
+              </p>
+            </div>
+          </div>
+
+          <div class="wf-step reveal" data-step="08">
+            <div class="wf-node"><span>08</span></div>
+            <div class="wf-card glass-card">
+              <h4>Score report</h4>
+              <p>
+                View your detailed score breakdown and overall evaluation.
+              </p>
+            </div>
+          </div>
+
+          <div class="wf-step reveal" data-step="09">
+            <div class="wf-node"><span>09</span></div>
+            <div class="wf-card glass-card">
+              <h4>Leaderboard</h4>
+              <p>
+                See where your score ranks against developers on the global leaderboard.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 5. CHALLENGE PREVIEW ============ -->
+      <section class="challenge" id="challenge">
+        <div class="section-head reveal">
+          <span class="eyebrow">// challenge preview</span>
+          <h2>What a mission actually looks like</h2>
+        </div>
+
+        <div class="challenge-card glass-card reveal">
+          <div class="challenge-top">
+            <span class="challenge-id">AUTH-001</span>
+            <span class="badge badge-medium">Medium</span>
+          </div>
+          <p class="challenge-scenario">
+            Users can successfully log in. After approximately 40 seconds, they
+            are automatically logged out.
+          </p>
+          <div class="challenge-meta">
+            <span
+              ><svg viewBox="0 0 24 24" fill="none">
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="9"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                />
+                <path
+                  d="M12 7v5l3 3"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                />
+              </svg>
+              45 minute limit</span
+            >
+            <span
+              ><svg viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M4 4h16v16H4z"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                />
+                <path d="M4 9h16" stroke="currentColor" stroke-width="1.6" />
+              </svg>
+              Domain: Auth</span
+            >
+          </div>
+          <a href="contest.html" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; justify-content: center; text-decoration: none;">
+            <svg viewBox="0 0 24 24" fill="none" style="width: 18px; height: 18px;">
+              <path d="M5 3l14 9-14 9V3z" fill="currentColor"/>
+            </svg>
+            Start Challenge
+          </a>
+        </div>
+      </section>
+
+      <!-- ============ 6. AI EVALUATION PREVIEW ============ -->
+      <section class="evaluation" id="evaluation">
+        <div class="section-head reveal">
+          <span class="eyebrow">// ai evaluation</span>
+          <h2>Your score report</h2>
+        </div>
+
+        <div class="eval-dashboard glass-card reveal" id="evalDashboard">
+          <div class="eval-bars">
+            <div class="eval-row">
+              <div class="eval-label">
+                <span>Problem Understanding</span
+                ><span class="eval-pct" data-target="92">0%</span>
+              </div>
+              <div class="eval-track">
+                <div class="eval-fill" data-target="92"></div>
+              </div>
+            </div>
+            <div class="eval-row">
+              <div class="eval-label">
+                <span>Prompt Quality</span
+                ><span class="eval-pct" data-target="88">0%</span>
+              </div>
+              <div class="eval-track">
+                <div class="eval-fill" data-target="88"></div>
+              </div>
+            </div>
+            <div class="eval-row">
+              <div class="eval-label">
+                <span>AI Collaboration</span
+                ><span class="eval-pct" data-target="95">0%</span>
+              </div>
+              <div class="eval-track">
+                <div class="eval-fill" data-target="95"></div>
+              </div>
+            </div>
+            <div class="eval-row">
+              <div class="eval-label">
+                <span>Code Correctness</span
+                ><span class="eval-pct" data-target="90">0%</span>
+              </div>
+              <div class="eval-track">
+                <div class="eval-fill" data-target="90"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="eval-summary">
+            <div class="eval-overall">
+              <span class="eval-overall-num" id="overallScore">0</span
+              ><span class="eval-overall-max">/100</span>
+              <span class="eval-overall-label">Overall Score</span>
+            </div>
+            <div class="eval-rank">
+              <span class="rank-badge">Top 12%</span>
+              <span class="eval-overall-label">Leaderboard Rank</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 7. FAQ ============ -->
+      <section class="faq" id="faq">
+        <div class="section-head reveal">
+          <span class="eyebrow">// faq</span>
+          <h2>Questions, answered</h2>
+        </div>
+
+        <div class="faq-list reveal" id="faqList">
+          <div class="faq-item">
+            <button class="faq-question">
+              Why only one attempt? <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-answer">
+              <p>
+                One submission is what makes the score mean something. It
+                mirrors a real incident — you don't get to retry production.
+              </p>
+            </div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-question">
+              Is the AI assistant built into the platform? <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-answer">
+              <p>
+                Yes! 1Code includes an integrated AI chat panel in the workspace powered specifically by Gemini. You don't need external accounts or API keys.
+              </p>
+            </div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-question">
+              Can I use external AI tools like ChatGPT, Claude, or Cursor? <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-answer">
+              <p>
+                All debugging is performed directly inside the 1Code in-browser workspace using our built-in Gemini AI assistant, which automatically logs your interaction transcript for grading.
+              </p>
+            </div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-question">
+              Can I close the tab and come back? <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-answer">
+              <p>
+                Yes. Refreshing the page or navigating back during an active browser session restores your workspace, timer, and saved code. Code edits auto-save to the backend every 5 seconds.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ============ 9. FOOTER ============ -->
+    <footer class="footer">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <span class="logo">1<span class="logo-accent">Code</span></span>
+          <p>Debugging, the way it actually works now.</p>
+        </div>
+        <div class="footer-cols">
+          <div class="footer-col">
+            <span class="footer-heading">Product</span>
+            <a href="#workflow">Workflow</a>
+            <a href="#challenge">Challenges</a>
+            <a href="#faq">FAQ</a>
+          </div>
+          <div class="footer-col">
+            <span class="footer-heading">Company</span>
+            <a href="#">About</a>
+            <a href="#">Contact</a>
+            <a href="#">Future Features</a>
+          </div>
+          <div class="footer-col">
+            <span class="footer-heading">Connect</span>
+            <a href="#">GitHub</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
+    <script src="session.js"></script>
+  </body>
+</html>

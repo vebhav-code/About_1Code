@@ -1,0 +1,43 @@
+<div class="page-header" style="margin-bottom: 24px;">
+  <div class="page-header-copy">
+    <span class="page-eyebrow">Settings</span>
+    <h3>Studio Preferences</h3>
+  </div>
+</div>
+
+<div class="card" style="display:flex;flex-direction:column;gap:24px">
+  <div>
+    <h4 style="font-size:0.95rem;font-weight:700;margin-bottom:6px">Internal Configuration</h4>
+    <p style="font-size:0.85rem;color:var(--text-secondary);line-height:1.6">
+      Configure workspace paths, evaluation engines, and studio features.
+    </p>
+  </div>
+
+  <div class="divider"></div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+      <div>
+        <strong style="display:block;font-size:0.875rem">Auto-Evaluate Submissions</strong>
+        <span style="font-size:0.78rem;color:var(--muted)">Automatically run Gemini evaluation on new zip uploads</span>
+      </div>
+      <span class="badge badge-active">Enabled</span>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+      <div>
+        <strong style="display:block;font-size:0.875rem">Active LLM Model</strong>
+        <span style="font-size:0.78rem;color:var(--muted)">Model used for evaluating code correctness and prompt quality</span>
+      </div>
+      <span class="mono" style="font-size:0.75rem">gemini-2.0-flash</span>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:16px">
+      <div>
+        <strong style="display:block;font-size:0.875rem">Workspace Folder</strong>
+        <span style="font-size:0.78rem;color:var(--muted)">Primary assets directory path</span>
+      </div>
+      <span class="mono" style="font-size:0.75rem">/assets/challenges</span>
+    </div>
+  </div>
+</div>

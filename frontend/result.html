@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>1Code | Result</title>
+
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="contest.css" />
+    <link rel="stylesheet" href="result.css" />
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body>
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="grain"></div>
+
+    <header class="nav">
+      <div class="nav-inner">
+        <a href="index.html" class="logo">
+          1<span class="logo-accent">Code</span>
+        </a>
+
+        <nav class="nav-links">
+          <a href="index.html">Home</a>
+          <a href="contest.html">Contest</a>
+          <a href="leaderboard.html">Leaderboard</a>
+        </nav>
+        <div class="nav-actions">
+          <a href="auth.html" class="btn btn-ghost">Sign In</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="contest-hero">
+      <div class="contest-container">
+        <span class="pill"> Challenge Completed </span>
+
+        <h1>AI Evaluation Result</h1>
+
+        <p>
+          Gemini has completed the evaluation of your debugging approach and
+          generated your overall score.
+        </p>
+      </div>
+    </section>
+
+    <section class="result-section">
+      <div class="contest-container">
+        <div class="glass-card overall-score-card">
+          <h2>Overall Score</h2>
+
+          <div class="score-circle">
+            <span> 91 </span>
+          </div>
+
+          <p>Excellent Debugging Performance</p>
+        </div>
+        <div class="glass-card result-card">
+          <h2>Score Breakdown</h2>
+
+          <div class="score-row">
+            <span> Hypothesis Quality </span>
+
+            <strong> 18 / 20 </strong>
+          </div>
+
+          <div class="score-row">
+            <span> Prompt Quality </span>
+
+            <strong> 24 / 25 </strong>
+          </div>
+
+          <div class="score-row">
+            <span> AI Collaboration </span>
+
+            <strong> 19 / 20 </strong>
+          </div>
+
+          <div class="score-row">
+            <span> Code Correctness </span>
+
+            <strong> 21 / 25 </strong>
+          </div>
+
+          <div class="score-row">
+            <span> Problem Solving </span>
+
+            <strong> 9 / 10 </strong>
+          </div>
+        </div>
+        <div class="glass-card result-card">
+          <h2>Gemini Feedback</h2>
+
+          <h3>Strengths</h3>
+
+          <ul>
+            <li>Excellent reasoning before modifying code.</li>
+
+            <li>Prompt contained enough context.</li>
+
+            <li>Correct root cause identified.</li>
+
+            <li>Solution fixes the authentication issue.</li>
+          </ul>
+
+          <br />
+
+          <h3>Suggestions</h3>
+
+          <ul>
+            <li>Verify cookie expiration as well.</li>
+
+            <li>Mention debugging steps in the prompt.</li>
+          </ul>
+        </div>
+        <div class="result-buttons">
+          <a href="leaderboard.html" class="btn btn-primary">
+            View Leaderboard
+          </a>
+
+          <a href="contest.html" class="btn btn-ghost"> Back to Contest </a>
+        </div>
+      </div>
+    </section>
+
+    <script src="result.js"></script>
+    <script src="session.js"></script>
+  </body>
+</html>

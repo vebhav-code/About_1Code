@@ -1,0 +1,153 @@
+/* =========================================================
+   1Code — Auth page (login / register)
+   Extends the tokens and .glass-card / .btn rules already
+   defined in style.css — this file only adds auth-specific
+   layout and states.
+   ========================================================= */
+
+.auth-body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.auth-wrap {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.auth-logo {
+  font-size: 1.5rem;
+  margin-bottom: 32px;
+}
+
+.auth-card {
+  width: 100%;
+  padding: 36px 32px 30px;
+}
+
+/* ---------- tabs ---------- */
+.auth-tabs {
+  position: relative;
+  display: flex;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  padding: 4px;
+  margin-bottom: 28px;
+}
+.auth-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  position: relative;
+  z-index: 2;
+  padding: 10px 0;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.25s var(--ease);
+}
+.auth-tab.active { color: #fff; }
+.auth-tab-indicator {
+  position: absolute;
+  top: 4px; left: 4px;
+  width: calc(50% - 4px);
+  height: calc(100% - 8px);
+  border-radius: 999px;
+  background: var(--gradient);
+  transition: transform 0.3s var(--ease);
+  z-index: 1;
+}
+.auth-tab-indicator.to-register { transform: translateX(100%); }
+
+/* ---------- forms ---------- */
+.auth-form {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  animation: fadeIn 0.25s var(--ease);
+}
+.auth-form.active { display: flex; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+.auth-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-top: 14px;
+  margin-bottom: 6px;
+}
+.auth-label:first-of-type { margin-top: 0; }
+
+.auth-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.94rem;
+  padding: 12px 14px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.auth-input:focus {
+  border-color: var(--blue);
+  background: rgba(255, 255, 255, 0.06);
+}
+.auth-input::placeholder { color: var(--text-muted); }
+
+.auth-submit {
+  width: 100%;
+  justify-content: center;
+  margin-top: 24px;
+  position: relative;
+}
+.auth-submit:disabled { opacity: 0.7; cursor: not-allowed; }
+
+.btn-spinner {
+  width: 15px; height: 15px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- error / switch ---------- */
+.auth-error {
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  color: var(--danger);
+  font-size: 0.86rem;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 20px;
+}
+
+.auth-switch {
+  text-align: center;
+  margin-top: 22px;
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+.auth-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.86rem;
+  color: var(--blue);
+  padding: 0;
+}
+.auth-link:hover { color: var(--purple); }

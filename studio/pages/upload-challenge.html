@@ -1,0 +1,79 @@
+<div class="page-header">
+  <div class="page-header-copy">
+    <span class="page-eyebrow">Create</span>
+    <h3>New Challenge</h3>
+  </div>
+</div>
+
+<div class="card edit-form-grid">
+  <form id="create-challenge-form" style="display:flex; flex-direction:column; gap:16px;">
+    
+    <div id="upload-error" class="alert alert-error" hidden style="color:var(--text-error); background:var(--bg-error); padding:12px; border-radius:6px; font-size:0.9rem;"></div>
+    
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+      <div class="form-group">
+        <label for="title" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Title</label>
+        <input type="text" id="title" name="title" required class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px;" />
+      </div>
+      <div class="form-group">
+        <label for="slug" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Slug</label>
+        <input type="text" id="slug" name="slug" pattern="[a-z0-9-]+" required title="Only lowercase letters, numbers, and hyphens" class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px;" />
+      </div>
+    </div>
+    
+    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px;">
+      <div class="form-group">
+        <label for="category" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Category</label>
+        <select id="category" name="category" required class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px;">
+          <option value="Authentication">Authentication</option>
+          <option value="Database">Database</option>
+          <option value="Performance">Performance</option>
+          <option value="Security">Security</option>
+          <option value="API">API</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="difficulty" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Difficulty</label>
+        <select id="difficulty" name="difficulty" required class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px;">
+          <option value="Easy">Easy</option>
+          <option value="Medium">Medium</option>
+          <option value="Hard">Hard</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="time_limit" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Time Limit (mins)</label>
+        <input type="number" id="time_limit" name="time_limit" value="45" min="1" required class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px;" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="description" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Description</label>
+      <textarea id="description" name="description" required rows="3" class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; font-family:inherit;"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="scenario" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Scenario</label>
+      <textarea id="scenario" name="scenario" required rows="4" class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; font-family:inherit;"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="rules" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Rules</label>
+      <textarea id="rules" name="rules" required rows="4" class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; font-family:inherit;"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="starter_code" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Starter Code</label>
+      <textarea id="starter_code" name="starter_code" required rows="8" class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; font-family:monospace; font-size:0.85rem;"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="official_solution" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Official Solution (grading-reference-only)</label>
+      <textarea id="official_solution" name="official_solution" required rows="8" class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; font-family:monospace; font-size:0.85rem;"></textarea>
+    </div>
+
+    <div class="action-row" style="justify-content: flex-end; gap: 12px; margin-top: 12px;">
+      <button type="submit" id="submit-challenge" class="button button-primary">Create Challenge</button>
+    </div>
+  </form>
+</div>

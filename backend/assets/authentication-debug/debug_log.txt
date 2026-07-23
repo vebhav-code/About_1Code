@@ -1,0 +1,42 @@
+=== DEBUG LOG ===
+Challenge: AUTH-001 — Session Expiry Bug
+Date: [YOUR DATE HERE]
+AI Tool Used: [e.g., ChatGPT-4, Gemini, Claude, Cursor, etc.]
+
+=== INITIAL HYPOTHESES (before looking at code) ===
+1. [Your first hypothesis]
+2. [Your second hypothesis]
+3. [Your third hypothesis]
+
+=== HYPOTHESIS PRIORITY ===
+Most likely → Least likely:
+1. [Ranked hypothesis]
+2. [Ranked hypothesis]
+3. [Ranked hypothesis]
+
+=== AI CONVERSATION LOG ===
+Paste your complete AI conversation below. Include EVERY prompt you sent
+and EVERY response you received — not just the winning one.
+
+--- Prompt 1 ---
+[Your prompt here]
+
+--- Response 1 ---
+[AI response here]
+
+--- Prompt 2 ---
+[Your follow-up prompt]
+
+--- Response 2 ---
+[AI response here]
+
+[Continue for all prompts/responses...]
+
+=== ROOT CAUSE ===
+[Describe the root cause you identified]
+
+=== FIX APPLIED ===
+[Describe the fix you applied, including file names and what you changed]
+
+=== VERIFICATION ===
+[How did you verify the fix works?]

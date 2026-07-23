@@ -1,0 +1,229 @@
+/* Dashboard page specific styles */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.panel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.quick-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-align: left;
+  color: var(--text-secondary);
+  font-size: 0.83rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.quick-action-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+  color: var(--text);
+  transform: translateY(-2px);
+}
+
+.quick-action-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 1.1rem;
+}
+
+/* Analytics styles */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.challenge-stat-row {
+  display: grid;
+  grid-template-columns: 1fr 120px 80px 80px 80px;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.855rem;
+  transition: background 0.13s ease;
+}
+
+.challenge-stat-row:hover {
+  background: var(--bg-hover);
+}
+
+.challenge-stat-row:last-child {
+  border-bottom: none;
+}
+
+.challenge-stat-header {
+  display: grid;
+  grid-template-columns: 1fr 120px 80px 80px 80px;
+  gap: 16px;
+  padding: 10px 16px;
+  background: var(--bg-muted);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+/* Upload page styles */
+.upload-zone {
+  border: 2px dashed var(--border-strong);
+  border-radius: var(--radius);
+  padding: 48px 32px;
+  text-align: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.upload-zone:hover,
+.upload-zone.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.upload-zone-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  display: grid;
+  place-items: center;
+  margin: 0 auto 16px;
+  color: var(--accent-bright);
+}
+
+.upload-zone-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.upload-zone-sub {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.preview-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.preview-field-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.preview-field-value {
+  font-size: 0.875rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.preview-field-full {
+  grid-column: 1 / -1;
+}
+
+/* Challenge detail styles */
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+}
+
+.detail-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.detail-meta-item:last-child {
+  border-bottom: none;
+}
+
+.detail-meta-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.detail-meta-value {
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+/* Edit form styles */
+.edit-form-grid {
+  display: grid;
+  gap: 16px;
+}
+
+/* Leaderboard styles */
+.rank-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+
+.rank-1 { background: linear-gradient(135deg, #f59e0b, #d97706); color: #7a3e00; }
+.rank-2 { background: linear-gradient(135deg, #94a3b8, #64748b); color: #1e293b; }
+.rank-3 { background: linear-gradient(135deg, #b45309, #92400e); color: #fff; }
+.rank-other { background: var(--bg-muted); color: var(--muted); border: 1px solid var(--border); }
+
+@media (max-width: 1100px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .analytics-grid { grid-template-columns: repeat(2, 1fr); }
+  .panel-grid { grid-template-columns: 1fr; }
+  .detail-grid { grid-template-columns: 1fr; }
+  .preview-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .analytics-grid { grid-template-columns: 1fr 1fr; }
+  .quick-actions-grid { grid-template-columns: 1fr; }
+}

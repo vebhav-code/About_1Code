@@ -1,0 +1,13 @@
+{
+  "name": "auth-001-buggy",
+  "version": "1.0.0",
+  "description": "Buggy auth server for 1Code AUTH-001 challenge",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "jsonwebtoken": "^9.0.0"
+  }
+}

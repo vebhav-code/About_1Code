@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1Code Studio — Admin Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <style>
+    body {
+      background: var(--bg);
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+    
+    .login-container {
+      width: 100%;
+      max-width: 420px;
+      animation: login-fade 0.5s cubic-bezier(.22,1,.36,1);
+    }
+    
+    .login-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    
+    .logo-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+      display: grid;
+      place-items: center;
+      box-shadow: 0 4px 20px rgba(109,40,217,0.45);
+    }
+    
+    .logo-text h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.03em;
+    }
+    
+    .logo-text p {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
+    .error-card {
+      background: var(--danger-dim);
+      border: 1px solid rgba(248,113,113,0.2);
+      border-radius: var(--radius-sm);
+      color: var(--danger);
+      padding: 10px 14px;
+      font-size: 0.83rem;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    @keyframes login-fade {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-logo">
+      <div class="logo-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="white" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <h1>1Code Studio</h1>
+        <p>Administrative Console</p>
+      </div>
+    </div>
+    
+    <div class="card" style="padding: 32px; border: 1px solid var(--border-strong); box-shadow: var(--shadow-lg);">
+      <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:6px">Welcome back</h3>
+      <p style="font-size:0.83rem;color:var(--text-secondary);margin-bottom:24px">Sign in to access admin workflows</p>
+      
+      <div id="error-container" hidden></div>
+      
+      <form id="login-form" style="display:flex;flex-direction:column;gap:18px">
+        <div class="form-group">
+          <label class="form-label" for="password">Admin Key</label>
+          <input type="password" id="password" class="form-input" placeholder="Enter admin key..." required autocomplete="current-password" />
+        </div>
+        
+        <button type="submit" id="submit-btn" class="button button-primary" style="justify-content:center;margin-top:8px;padding:11px">
+          Sign In
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('login-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const errorContainer = document.getElementById('error-container');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Authenticating...';
+      errorContainer.hidden = true;
+      errorContainer.innerHTML = '';
+
+      const password = document.getElementById('password').value;
+
+      try {
+        const API_BASE = 'http://127.0.0.1:8000';
+        const res = await fetch(`${API_BASE}/api/admin/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ password })
+        });
+
+        let data = {};
+        try {
+          data = await res.json();
+        } catch {
+          // response had no body — still handle it below instead of crashing
+        }
+
+        if (!res.ok) {
+          throw new Error(data.detail || `Login failed (${res.status})`);
+        }
+
+        // Store active admin session
+        localStorage.setItem('1code_admin_key', password);
+        sessionStorage.setItem('admin_user', JSON.stringify({ name: 'Admin User' }));
+        
+        // Redirect to admin main board
+        window.location.replace('index.html');
+      } catch (err) {
+        errorContainer.hidden = false;
+        errorContainer.innerHTML = `
+          <div class="error-card">
+            <span>✕</span>
+            <span>${err.message}</span>
+          </div>`;
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign In';
+      }
+    });
+  </script>
+</body>
+</html>

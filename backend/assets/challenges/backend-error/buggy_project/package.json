@@ -1,0 +1,14 @@
+{
+  "name": "1code-jwt-refresh-bug",
+  "version": "1.0.0",
+  "description": "1Code debugging challenge: users are silently logged out roughly 30-40 seconds after login even though a refresh-token flow exists.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.6",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

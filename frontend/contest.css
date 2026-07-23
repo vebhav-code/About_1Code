@@ -1,0 +1,601 @@
+/* ===========================================
+   Contest Page
+=========================================== */
+
+.contest-container {
+    width: 90%;
+    max-width: 1200px;
+    margin: auto;
+}
+
+
+/* ===========================================
+   Hero
+=========================================== */
+
+.contest-hero {
+    padding: 120px 0 70px;
+    text-align: center;
+}
+
+.contest-hero h1 {
+    font-family: var(--font-display);
+    font-size: 3rem;
+    margin: 20px 0;
+}
+
+.contest-hero p {
+    max-width: 720px;
+    margin: auto;
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+}
+
+
+/* ===========================================
+   Contest Meta
+=========================================== */
+
+.contest-meta {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 45px;
+}
+
+.meta-card {
+    width: 220px;
+    padding: 24px;
+    text-align: center;
+}
+
+.meta-title {
+    display: block;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+.meta-value {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+}
+
+
+/* ===========================================
+   Contest Layout
+=========================================== */
+
+.contest-content {
+    padding: 40px 0 80px;
+}
+
+.contest-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 30px;
+    align-items: start;
+}
+
+.contest-left {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.contest-right {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+
+/* ===========================================
+   Cards
+=========================================== */
+
+.contest-card {
+    padding: 30px;
+}
+
+.contest-card h2 {
+    margin-bottom: 20px;
+    font-family: var(--font-display);
+}
+
+.contest-card p {
+    color: var(--text-secondary);
+    line-height: 1.8;
+}
+
+.scenario-text {
+    font-size: 1rem;
+}
+
+
+/* ===========================================
+   Rules
+=========================================== */
+
+.rule-list {
+    padding-left: 20px;
+}
+
+.rule-list li {
+    margin-bottom: 15px;
+    color: var(--text-secondary);
+}
+
+
+/* ===========================================
+   Timer
+=========================================== */
+
+.timer-card {
+    padding: 35px;
+    text-align: center;
+}
+
+.timer-label {
+    color: var(--text-secondary);
+    display: block;
+    margin-bottom: 15px;
+}
+
+#contestTimer {
+    font-size: 4rem;
+    font-family: var(--font-display);
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    color: transparent;
+    margin-bottom: 15px;
+}
+
+.timer-card p {
+    color: var(--text-muted);
+}
+
+
+/* ===========================================
+   Contest Information
+=========================================== */
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+}
+
+.info-row:last-child {
+    border: none;
+}
+
+.info-row span {
+    color: var(--text-secondary);
+}
+
+
+/* ===========================================
+   Start Section
+=========================================== */
+
+.start-section {
+    padding: 0 0 60px;
+}
+
+.start-card {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 44px 40px;
+    text-align: center;
+}
+
+.start-card h2 {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    margin-bottom: 12px;
+}
+
+.start-card > p {
+    color: var(--text-secondary);
+    margin-bottom: 28px;
+    line-height: 1.7;
+}
+
+.start-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: stretch;
+}
+
+.start-form input {
+    padding: 14px 18px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, .05);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.start-form input:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(91, 141, 239, 0.15);
+}
+
+.start-notice {
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    border-radius: var(--radius-sm);
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    text-align: left;
+}
+
+.hypothesis-step {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    text-align: left;
+    margin-top: 10px;
+}
+
+.hypothesis-step label {
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.hypothesis-step textarea {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, .05);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    resize: vertical;
+    min-height: 110px;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hypothesis-step textarea:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(91, 141, 239, 0.15);
+}
+
+.start-hint {
+    margin-top: 22px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--blue);
+    cursor: pointer;
+    font-size: inherit;
+    text-decoration: underline;
+    padding: 0;
+    transition: color 0.15s ease;
+}
+
+.btn-link:hover {
+    color: var(--purple);
+}
+
+
+/* ===========================================
+   Workspace Section
+=========================================== */
+
+.workspace-section {
+    padding: 0 0 80px;
+}
+
+.challenge-workspace {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 20px;
+    height: 540px;
+    align-items: stretch;
+}
+
+
+/* ===========================================
+   Code Pane
+=========================================== */
+
+.code-pane,
+.chat-pane {
+    display: flex;
+    flex-direction: column;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    backdrop-filter: blur(12px);
+}
+
+.pane-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: rgba(255, 255, 255, 0.035);
+    border-bottom: 1px solid var(--glass-border);
+    flex-shrink: 0;
+}
+
+.pane-title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.pane-title svg {
+    color: var(--blue);
+    flex-shrink: 0;
+}
+
+.pane-badge {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: rgba(168, 85, 247, 0.15);
+    color: var(--purple);
+    border: 1px solid rgba(168, 85, 247, 0.25);
+}
+
+.save-status {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    transition: color 0.2s ease;
+}
+
+#codeEditor {
+    flex: 1;
+    width: 100%;
+    background: #0d1020;
+    color: #c9d1d9;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    line-height: 1.65;
+    padding: 18px 20px;
+    tab-size: 2;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: auto;
+}
+
+#codeEditor::placeholder {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+
+/* ===========================================
+   Chat Pane
+=========================================== */
+
+#chatMessages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scroll-behavior: smooth;
+}
+
+#chatMessages::-webkit-scrollbar {
+    width: 4px;
+}
+
+#chatMessages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#chatMessages::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.chat-welcome {
+    text-align: center;
+    padding: 20px 10px;
+}
+
+.chat-welcome p {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+.chat-bubble {
+    max-width: 88%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    word-break: break-word;
+    animation: bubbleIn 0.18s ease;
+}
+
+@keyframes bubbleIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.chat-bubble.user {
+    background: linear-gradient(135deg, rgba(91, 141, 239, 0.25), rgba(168, 85, 247, 0.2));
+    border: 1px solid rgba(91, 141, 239, 0.25);
+    align-self: flex-end;
+    color: var(--text-primary);
+    border-bottom-right-radius: 4px;
+}
+
+.chat-bubble.assistant {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    align-self: flex-start;
+    color: var(--text-secondary);
+    border-bottom-left-radius: 4px;
+}
+
+/* Typing indicator */
+.chat-bubble.typing {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 12px 16px;
+}
+
+.chat-bubble.typing span {
+    display: block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    animation: typingDot 1.2s infinite ease-in-out;
+}
+
+.chat-bubble.typing span:nth-child(2) { animation-delay: 0.2s; }
+.chat-bubble.typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingDot {
+    0%, 60%, 100% { opacity: 0.3; transform: scale(0.85); }
+    30%            { opacity: 1;   transform: scale(1.1);  }
+}
+
+.chat-input-row {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    border-top: 1px solid var(--glass-border);
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+#chatInput {
+    flex: 1;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, .06);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    transition: border-color 0.2s ease;
+}
+
+#chatInput:focus {
+    outline: none;
+    border-color: var(--blue);
+}
+
+.chat-send-btn {
+    padding: 10px 14px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+/* ===========================================
+   Submit Bar
+=========================================== */
+
+.submit-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 18px;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.submit-hint {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.submit-workspace-btn {
+    white-space: nowrap;
+    padding: 13px 30px;
+}
+
+
+/* ===========================================
+   Responsive
+=========================================== */
+
+@media (max-width: 950px) {
+    .contest-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .challenge-workspace {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .code-pane {
+        height: 380px;
+    }
+
+    .chat-pane {
+        height: 420px;
+    }
+}
+
+@media (max-width: 700px) {
+    .contest-hero h1 {
+        font-size: 2.3rem;
+    }
+
+    #contestTimer {
+        font-size: 3rem;
+    }
+
+    .meta-card {
+        width: 100%;
+    }
+
+    .start-card {
+        padding: 30px 24px;
+    }
+
+    .submit-bar {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+
+    .submit-workspace-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}

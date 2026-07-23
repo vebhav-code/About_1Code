@@ -1,0 +1,9 @@
+-- Add missing columns to submissions table
+
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS name VARCHAR NOT NULL DEFAULT 'Anonymous';
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS problem_understanding_score INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS prompt_quality_score INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS ai_collaboration_score INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS code_correctness_score INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS overall_score INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS feedback TEXT NOT NULL DEFAULT '';

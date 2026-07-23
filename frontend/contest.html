@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="1Code Authentication Debug Challenge — fix a real JWT auth bug using AI tools in a live coding workspace." />
+
+    <title>1Code | Contest</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="contest.css" />
+  </head>
+
+  <body>
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="grain"></div>
+
+    <!-- ========================================= -->
+    <!-- NAVBAR                                    -->
+    <!-- ========================================= -->
+    <header class="nav">
+      <div class="nav-inner">
+        <a href="index.html" class="logo">
+          1<span class="logo-accent">Code</span>
+        </a>
+        <nav class="nav-links">
+          <a href="index.html">Home</a>
+          <a href="contest.html">Contest</a>
+          <a href="leaderboard.html">Leaderboard</a>
+        </nav>
+        <div class="nav-actions">
+          <a href="auth.html" class="btn btn-ghost">Sign In</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- ========================================= -->
+    <!-- HERO                                      -->
+    <!-- ========================================= -->
+    <section class="contest-hero">
+      <div class="contest-container">
+        <span class="pill" id="challengePill"> Authentication Challenge </span>
+
+        <h1 id="challengeTitle">Authentication Debug Challenge</h1>
+
+        <p id="challengeDesc">
+          Debug a real-world authentication issue using your favourite AI tool
+          and compete with other developers.
+        </p>
+
+        <div class="contest-meta">
+          <div class="meta-card glass-card">
+            <span class="meta-title"> Difficulty </span>
+            <span class="meta-value" id="metaDifficulty"> Easy </span>
+          </div>
+          <div class="meta-card glass-card">
+            <span class="meta-title"> Time Limit </span>
+            <span class="meta-value" id="metaTimeLimit"> 45 Minutes </span>
+          </div>
+          <div class="meta-card glass-card">
+            <span class="meta-title"> AI Allowed </span>
+            <span class="meta-value"> ✅ Yes </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================= -->
+    <!-- CONTEST CONTENT                           -->
+    <!-- ========================================= -->
+    <section class="contest-content">
+      <div class="contest-container">
+        <div class="contest-grid">
+          <!-- LEFT: Scenario + Rules -->
+          <div class="contest-left">
+            <div class="glass-card contest-card">
+              <h2>📄 Scenario</h2>
+              <p class="scenario-text" id="scenarioText">
+                A user successfully logs into the application. However, after
+                approximately <strong>40 seconds</strong>, they are automatically
+                logged out. No error message appears. The backend is running
+                successfully and the database contains the correct user
+                credentials. Your task is to identify the root cause, debug the
+                issue and fix it in the editor below.
+              </p>
+            </div>
+
+            <div class="glass-card contest-card">
+              <h2>📋 Contest Rules</h2>
+              <ul class="rule-list">
+                <li>✅ AI tools are allowed — use the chat panel on the right.</li>
+                <li>✅ Only ONE official submission is allowed.</li>
+                <li>✅ Fix the bug directly in the code editor.</li>
+                <li>✅ Your code and chat are saved automatically.</li>
+                <li>✅ Click <strong>Submit for Grading</strong> when ready.</li>
+                <li>✅ Submissions after the timer ends will not be accepted.</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- RIGHT: Timer + Info -->
+          <div class="contest-right">
+            <div class="glass-card timer-card">
+              <span class="timer-label"> Time Remaining </span>
+              <h1 id="contestTimer">45:00</h1>
+              <p id="timerNote">Timer starts when you begin the challenge.</p>
+            </div>
+
+            <div class="glass-card contest-card">
+              <h2>📌 Contest Information</h2>
+              <div class="info-row">
+                <span>Challenge ID</span>
+                <strong>AUTH-001</strong>
+              </div>
+              <div class="info-row">
+                <span>Category</span>
+                <strong>Authentication</strong>
+              </div>
+              <div class="info-row">
+                <span>Difficulty</span>
+                <strong id="infoDifficulty">Easy</strong>
+              </div>
+              <div class="info-row">
+                <span>Attempts</span>
+                <strong>1</strong>
+              </div>
+              <div class="info-row">
+                <span>AI Allowed</span>
+                <strong>Yes</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================= -->
+    <!-- START SECTION (shown until session begins)-->
+    <!-- ========================================= -->
+    <section class="start-section" id="startSection">
+      <div class="contest-container">
+        <div class="glass-card start-card">
+          <h2>🚀 Ready to Start?</h2>
+          <p>
+            Click below to begin. A live session will be created, your code
+            edits and AI chat will be saved automatically.
+          </p>
+          <div id="startNotice" class="start-notice" style="display: none;"></div>
+          <div class="start-form" id="startInitialForm">
+            <button id="startBtn" class="btn btn-primary">
+              I'm Ready — Write My Hypothesis
+            </button>
+          </div>
+          <div id="hypothesisStep" style="display:none;" class="hypothesis-step">
+            <label for="hypothesisInput">Before you see the code — what do you think is causing this? Write your best guess.</label>
+            <textarea id="hypothesisInput" rows="4" placeholder="e.g. Sounds like a token expiry or session timeout issue — I'd check how the session length is configured..."></textarea>
+            <button id="beginDebuggingBtn" class="btn btn-primary">Begin Debugging</button>
+          </div>
+          <p class="start-hint">
+            You can also download the challenge for local reference:
+            <button id="downloadChallenge" class="btn-link">
+              Download challenge.zip
+            </button>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================= -->
+    <!-- WORKSPACE (hidden until session started)  -->
+    <!-- ========================================= -->
+    <section class="workspace-section" id="workspaceSection" style="display:none">
+      <div class="contest-container">
+        <div class="challenge-workspace">
+
+          <!-- Code Pane -->
+          <div class="code-pane">
+            <div class="pane-header">
+              <span class="pane-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                Code Editor
+              </span>
+              <span id="saveStatus" class="save-status" title="Auto-save status">—</span>
+            </div>
+            <textarea
+              id="codeEditor"
+              spellcheck="false"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              placeholder="Your code will appear here once the challenge starts..."
+            ></textarea>
+          </div>
+
+          <!-- Chat Pane -->
+          <div class="chat-pane">
+            <div class="pane-header">
+              <span class="pane-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                AI Assistant
+              </span>
+              <span class="pane-badge">Gemini</span>
+            </div>
+            <div id="chatMessages" role="log" aria-live="polite">
+              <div class="chat-welcome">
+                <p>👋 Hi! I'm your debugging partner.<br/>Ask me anything about the challenge — I'll help you find the bug without giving it away directly.</p>
+              </div>
+            </div>
+            <form id="chatForm" class="chat-input-row" novalidate>
+              <input
+                id="chatInput"
+                type="text"
+                placeholder="Ask the AI for help..."
+                autocomplete="off"
+                maxlength="1000"
+              />
+              <button type="submit" id="sendBtn" class="btn btn-primary chat-send-btn" aria-label="Send message">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Submit Bar -->
+        <div class="submit-bar">
+          <p class="submit-hint">Review your fix before submitting — only one submission is allowed.</p>
+          <button id="submitBtn" class="btn btn-primary submit-workspace-btn">
+            Submit for Grading
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <script src="contest.js"></script>
+    <script src="session.js"></script>
+  </body>
+</html>

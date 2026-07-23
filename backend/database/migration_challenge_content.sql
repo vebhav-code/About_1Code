@@ -1,0 +1,3 @@
+ALTER TABLE challenges ADD COLUMN IF NOT EXISTS category VARCHAR;
+ALTER TABLE challenges ADD COLUMN IF NOT EXISTS starter_code TEXT;
+ALTER TABLE challenges ADD COLUMN IF NOT EXISTS official_solution TEXT;

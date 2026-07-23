@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>1Code — Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      .dashboard-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 24px 0;
+        max-width: var(--max-width);
+        margin: 0 auto;
+        width: 100%;
+        position: relative;
+        z-index: 2;
+      }
+      .dashboard-container {
+        max-width: var(--max-width);
+        margin: 0 auto;
+        padding: 0 0 60px;
+        position: relative;
+        z-index: 1;
+        width: 100%;
+      }
+      .dashboard-header {
+        margin-bottom: 40px;
+      }
+      .dashboard-header h1 {
+        font-family: var(--font-display);
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+      .dashboard-header p {
+        color: var(--text-secondary);
+        font-size: 1.05rem;
+      }
+      .challenges-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 24px;
+      }
+      .challenge-card {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius);
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        transition: transform 0.25s var(--ease), border-color 0.25s var(--ease), background 0.25s var(--ease);
+      }
+      .challenge-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(255, 255, 255, 0.2);
+        background: var(--glass-bg-strong);
+      }
+      .challenge-meta-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .category-tag {
+        font-size: 0.75rem;
+        font-family: var(--font-mono);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 4px 10px;
+        background: rgba(91, 141, 239, 0.15);
+        color: var(--blue);
+        border-radius: 999px;
+        border: 1px solid rgba(91, 141, 239, 0.25);
+      }
+      .badge-diff {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 999px;
+      }
+      .badge-easy { background: rgba(52, 211, 153, 0.15); color: #34D399; border: 1px solid rgba(52, 211, 153, 0.25); }
+      .badge-medium { background: rgba(251, 191, 36, 0.15); color: #FBBF24; border: 1px solid rgba(251, 191, 36, 0.25); }
+      .badge-hard { background: rgba(248, 113, 113, 0.15); color: #F87171; border: 1px solid rgba(248, 113, 113, 0.25); }
+      .challenge-title {
+        font-family: var(--font-display);
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: var(--text-primary);
+      }
+      .challenge-desc {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-bottom: 20px;
+        line-height: 1.5;
+        flex-grow: 1;
+      }
+      .challenge-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 16px;
+        border-top: 1px solid var(--glass-border);
+      }
+      .time-limit {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-glow bg-glow-1" aria-hidden="true"></div>
+    <div class="bg-glow bg-glow-2" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <div style="padding: 0 24px;">
+      <nav class="dashboard-nav">
+        <a href="index.html" class="logo">1<span class="logo-accent">Code</span></a>
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <span id="userInfo" style="font-size: 0.9rem; color: var(--text-secondary);"></span>
+          <button class="btn btn-ghost" id="logoutBtn" type="button" style="padding: 8px 16px;">Log out</button>
+        </div>
+      </nav>
+
+      <main class="dashboard-container">
+        <div class="dashboard-header">
+          <h1 id="welcomeTitle">Available Debugging Challenges</h1>
+          <p>Select a challenge to test your reasoning and AI debugging collaboration.</p>
+        </div>
+
+        <div id="challengesList" class="challenges-grid">
+          <p style="color: var(--text-muted);">Loading challenges…</p>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      const session = JSON.parse(localStorage.getItem("1code_user") || "null");
+      if (!session) {
+        window.location.href = "auth.html";
+      } else {
+        const userInfoEl = document.getElementById("userInfo");
+        if (userInfoEl) userInfoEl.textContent = session.name || session.email || "User";
+      }
+
+      document.getElementById("logoutBtn").addEventListener("click", () => {
+        localStorage.removeItem("1code_user");
+        window.location.href = "auth.html";
+      });
+
+      async function loadChallenges() {
+        const container = document.getElementById("challengesList");
+        try {
+          const res = await fetch("http://localhost:8000/challenges");
+          if (!res.ok) throw new Error("Failed to load challenges");
+          const challenges = await res.json();
+
+          if (!challenges.length) {
+            container.innerHTML = `<p style="color: var(--text-muted); grid-column: 1/-1;">No active challenges available right now.</p>`;
+            return;
+          }
+
+          container.innerHTML = challenges.map(c => {
+            const diff = (c.difficulty || 'Medium').toLowerCase();
+            const badgeClass = diff === 'easy' ? 'badge-easy' : (diff === 'hard' ? 'badge-hard' : 'badge-medium');
+            
+            return `
+              <div class="challenge-card">
+                <div>
+                  <div class="challenge-meta-row">
+                    <span class="category-tag">${c.category || 'General'}</span>
+                    <span class="badge-diff ${badgeClass}">${c.difficulty || 'Medium'}</span>
+                  </div>
+                  <h3 class="challenge-title">${c.title}</h3>
+                  <p class="challenge-desc">${c.description || 'No description provided.'}</p>
+                </div>
+                <div class="challenge-footer">
+                  <span class="time-limit">
+                    ⏱ ${c.time_limit || 45} mins
+                  </span>
+                  <a href="contest.html?slug=${encodeURIComponent(c.slug)}" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">Join Contest</a>
+                </div>
+              </div>
+            `;
+          }).join('');
+        } catch (err) {
+          container.innerHTML = `<p style="color: var(--danger); grid-column: 1/-1;">Could not load challenges. Please check if the backend is running.</p>`;
+        }
+      }
+
+      loadChallenges();
+    </script>
+  </body>
+</html>

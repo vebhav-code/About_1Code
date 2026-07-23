@@ -1,0 +1,14 @@
+{
+  "slug": "silent-session-expiry-jwt-refresh",
+  "title": "The Vanishing Session: Silent Logout Bug",
+  "description": "A small Express + JWT authentication service exposes login, refresh, logout, and a protected /me endpoint. Users are unexpectedly logged out about 30 seconds after logging in, even though a refresh-token mechanism is implemented and the refresh token itself is still valid. No error is ever shown to the end user. Find and fix the root cause.",
+  "scenario": "A user logs in successfully and receives an access token plus a refresh token cookie. The frontend is supposed to silently call /api/auth/refresh whenever a protected request comes back with 401, so the user should stay logged in for up to 7 days without re-entering their password. Instead, testers report that approximately 30-40 seconds after logging in, every authenticated request starts returning 401 and they are bounced back to the login screen. No error banner or console warning is shown; the session simply disappears. The refresh token cookie is confirmed to still be present in the browser and has not expired. Your job is to trace the authentication flow across the middleware, controller, and token service to find why the refresh mechanism is failing to keep the session alive, then fix it.",
+  "difficulty": "Medium",
+  "time_limit": 45,
+  "rules": [
+    "AI tools are allowed.",
+    "Only one official submission.",
+    "Upload fixed_project.zip.",
+    "Upload debug_log.txt."
+  ]
+}

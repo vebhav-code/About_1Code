@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>1Code | Leaderboard</title>
+
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="leaderboard.css" />
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body>
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="grain"></div>
+
+    <header class="nav">
+      <div class="nav-inner">
+        <a href="index.html" class="logo">
+          1<span class="logo-accent">Code</span>
+        </a>
+
+        <nav class="nav-links">
+          <a href="index.html"> Home </a>
+          <a href="contest.html"> Contest </a>
+          <a href="leaderboard.html"> Leaderboard </a>
+        </nav>
+        <div class="nav-actions">
+          <a href="auth.html" class="btn btn-ghost">Sign In</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="contest-hero">
+      <div class="contest-container">
+        <span class="pill"> Contest Rankings </span>
+
+        <h1>Leaderboard</h1>
+
+        <p>Top developers based on AI-assisted debugging performance.</p>
+      </div>
+    </section>
+    <section class="leaderboard-section">
+      <div class="contest-container">
+        <div class="glass-card leaderboard-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+
+                <th>Developer</th>
+
+                <th>Challenge</th>
+
+                <th>Score</th>
+
+                <th>Time</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr>
+                <td>🥇</td>
+
+                <td>Vebhav</td>
+
+                <td>Authentication Debug</td>
+
+                <td>96</td>
+
+                <td>18 min</td>
+              </tr>
+
+              <tr>
+                <td>🥈</td>
+
+                <td>Rahul</td>
+
+                <td>Authentication Debug</td>
+
+                <td>92</td>
+
+                <td>21 min</td>
+              </tr>
+
+              <tr>
+                <td>🥉</td>
+
+                <td>Aman</td>
+
+                <td>Authentication Debug</td>
+
+                <td>90</td>
+
+                <td>24 min</td>
+              </tr>
+
+              <tr>
+                <td>4</td>
+
+                <td>Priya</td>
+
+                <td>Authentication Debug</td>
+
+                <td>88</td>
+
+                <td>27 min</td>
+              </tr>
+
+              <tr>
+                <td>5</td>
+
+                <td>Aditya</td>
+
+                <td>Authentication Debug</td>
+
+                <td>86</td>
+
+                <td>31 min</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="leaderboard-actions">
+          <a href="contest.html" class="btn btn-primary">
+            Try Challenge Again
+          </a>
+
+          <a href="index.html" class="btn btn-ghost"> Home </a>
+        </div>
+      </div>
+    </section>
+
+    <script src="leaderboard.js"></script>
+    <script src="session.js"></script>
+  </body>
+</html>

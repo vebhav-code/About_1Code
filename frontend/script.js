@@ -139,3 +139,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 });
+/* =========================================================
+   Challenge Button Navigation
+========================================================= */
+
+const challengeBtn = document.getElementById("challengeBtn");
+
+if (challengeBtn) {
+
+    challengeBtn.addEventListener("click", () => {
+
+        window.location.href = "contest.html";
+
+    });
+
+}

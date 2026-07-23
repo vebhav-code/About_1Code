@@ -488,3 +488,4 @@ main, header, footer { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+

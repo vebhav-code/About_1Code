@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>1Code — Sign in</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="auth.css" />
+  </head>
+  <body class="auth-body">
+    <div class="bg-glow bg-glow-1" aria-hidden="true"></div>
+    <div class="bg-glow bg-glow-2" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <div class="auth-wrap">
+      <a href="index.html" class="logo auth-logo"
+        >1<span class="logo-accent">Code</span></a
+      >
+
+      <div class="auth-card glass-card">
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-tab="login" type="button">
+            Login
+          </button>
+          <button class="auth-tab" data-tab="register" type="button">
+            Register
+          </button>
+          <span class="auth-tab-indicator" id="tabIndicator"></span>
+        </div>
+
+        <p class="auth-error" id="authError" hidden></p>
+
+        <!-- LOGIN FORM -->
+        <form class="auth-form active" id="loginForm" data-form="login">
+          <label class="auth-label" for="loginEmail">Email</label>
+          <input
+            class="auth-input"
+            type="email"
+            id="loginEmail"
+            name="email"
+            placeholder="you@example.com"
+            required
+          />
+
+          <label class="auth-label" for="loginPassword">Password</label>
+          <input
+            class="auth-input"
+            type="password"
+            id="loginPassword"
+            name="password"
+            placeholder="••••••••"
+            required
+          />
+
+          <button class="btn btn-primary auth-submit" type="submit">
+            <span class="btn-text">Sign in</span>
+            <span class="btn-spinner" hidden></span>
+          </button>
+        </form>
+
+        <!-- REGISTER FORM -->
+        <form class="auth-form" id="registerForm" data-form="register">
+          <label class="auth-label" for="registerName">Name</label>
+          <input
+            class="auth-input"
+            type="text"
+            id="registerName"
+            name="name"
+            placeholder="Your name"
+            required
+          />
+
+          <label class="auth-label" for="registerEmail">Email</label>
+          <input
+            class="auth-input"
+            type="email"
+            id="registerEmail"
+            name="email"
+            placeholder="you@example.com"
+            required
+          />
+
+          <label class="auth-label" for="registerPassword">Password</label>
+          <input
+            class="auth-input"
+            type="password"
+            id="registerPassword"
+            name="password"
+            placeholder="At least 8 characters"
+            minlength="8"
+            required
+          />
+
+          <button class="btn btn-primary auth-submit" type="submit">
+            <span class="btn-text">Create account</span>
+            <span class="btn-spinner" hidden></span>
+          </button>
+        </form>
+
+        <p class="auth-switch">
+          <span data-show-on="login"
+            >New here?
+            <button type="button" class="auth-link" data-switch-to="register">
+              Create an account
+            </button></span
+          >
+          <span data-show-on="register" hidden
+            >Already have an account?
+            <button type="button" class="auth-link" data-switch-to="login">
+              Sign in
+            </button></span
+          >
+        </p>
+      </div>
+    </div>
+
+    <script src="auth.js"></script>
+  </body>
+</html>

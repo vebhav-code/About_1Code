@@ -1,0 +1,71 @@
+<div class="page-header">
+  <div class="page-header-copy">
+    <span class="page-eyebrow">Analytics</span>
+    <h3>Platform Insights</h3>
+  </div>
+</div>
+
+<div class="stats-grid" style="margin-bottom: 24px;">
+  <div class="stat-card purple">
+    <div class="stat-header">
+      <span class="stat-label">Total Submissions</span>
+      <div class="stat-icon purple">Σ</div>
+    </div>
+    <strong class="stat-value" id="analytics-users">--</strong>
+    <div class="stat-footer">Across all challenges</div>
+  </div>
+
+  <div class="stat-card blue">
+    <div class="stat-header">
+      <span class="stat-label">Catalog Size</span>
+      <div class="stat-icon blue">★</div>
+    </div>
+    <strong class="stat-value" id="analytics-challenges">--</strong>
+    <div class="stat-footer">Active challenges live</div>
+  </div>
+
+  <div class="stat-card green">
+    <div class="stat-header">
+      <span class="stat-label">Average Score</span>
+      <div class="stat-icon green">μ</div>
+    </div>
+    <strong class="stat-value" id="analytics-average">--</strong>
+    <div class="stat-footer">Normalized mean score</div>
+  </div>
+
+  <div class="stat-card amber">
+    <div class="stat-header">
+      <span class="stat-label">Most Attempted</span>
+      <div class="stat-icon amber">🔥</div>
+    </div>
+    <strong class="stat-value" id="analytics-most-attempted" style="font-size:1.15rem;line-height:1.2;font-weight:700;word-break:break-word;margin-top:6px;min-height:40px">--</strong>
+    <div class="stat-footer">Highest participant count</div>
+  </div>
+</div>
+
+<div class="table-container">
+  <div class="table-header">
+    <div class="table-title-group">
+      <span class="table-eyebrow">Insights</span>
+      <h4 class="table-title">Performance breakdown by challenge</h4>
+    </div>
+  </div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Challenge</th>
+          <th>Participants</th>
+          <th>Average Score</th>
+          <th>Highest Score</th>
+          <th>Lowest Score</th>
+        </tr>
+      </thead>
+      <tbody id="analytics-stats-tbody">
+        <tr class="table-empty">
+          <td colspan="5">Loading analytics data...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
