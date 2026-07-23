@@ -6,7 +6,7 @@
    ========================================================= */
 
 // Update this once the backend is deployed to Render.
-const API_BASE = 'https://about-1code.onrender.com';
+const API_BASE = 'https://about-1code.onrender.com/';
 
 document.addEventListener('DOMContentLoaded', () => {
 
