@@ -163,7 +163,7 @@
       async function loadChallenges() {
         const container = document.getElementById("challengesList");
         try {
-          const res = await fetch("http://localhost:8000/challenges");
+          const res = await fetch("https://about-1code.onrender.com/challenges");
           if (!res.ok) throw new Error("Failed to load challenges");
           const challenges = await res.json();
 
