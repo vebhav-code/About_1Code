@@ -54,6 +54,9 @@ app = FastAPI(title="1Code API", version="1.0.0")
 default_origins = [
     "http://localhost:5500",
     "http://127.0.0.1:5500",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "null",  # Allows file:// protocol (browser sends Origin: null)
     "https://1code-swart.vercel.app",
     "https://1codeadmin-6tkeqp43n-vebhav-sharma-s-projects.vercel.app",
 ]
