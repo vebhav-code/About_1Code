@@ -51,13 +51,23 @@ seed_admin()
 
 app = FastAPI(title="1Code API", version="1.0.0")
 
-frontend_origins = [
-    os.getenv("FRONTEND_ORIGIN", "http://localhost:5500"),
+default_origins = [
     "http://localhost:5500",
-    "http://127.0.0.1:5500"
+    "http://127.0.0.1:5500",
+    "https://1code-swart.vercel.app",
+    "https://1codeadmin-6tkeqp43n-vebhav-sharma-s-projects.vercel.app",
 ]
-# Remove duplicates
-frontend_origins = list(set(frontend_origins))
+
+# FRONTEND_ORIGIN can hold a comma-separated list for extra/preview deploy URLs,
+# e.g. "https://1code-swart.vercel.app,https://1codeadmin-xxxx.vercel.app"
+env_origins = [
+    origin.strip()
+    for origin in os.getenv("FRONTEND_ORIGIN", "").split(",")
+    if origin.strip()
+]
+
+frontend_origins = list(set(default_origins + env_origins))
+print(f"CORS allowed origins: {frontend_origins}")
 
 app.add_middleware(
     CORSMiddleware,
