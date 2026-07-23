@@ -1,28 +1,10 @@
 // =========================
-// API Base URL (Safe Update)
+// API Base URL
 // =========================
-
-// 1. Use environment variable if available (future-proof)
-// 2. Use Render backend when running on localhost
-// 3. If deployed on Vercel, also use Render backend
-// 4. Otherwise keep existing behaviour
-
-const BASE_URL = 'https://about-1code.onrender.com';
-
-const isLocal =
-  window.location.hostname === 'localhost' ||
-  window.location.hostname === '127.0.0.1';
-
-const isVercel =
-  window.location.hostname.endsWith('.vercel.app');
-
-const BASE_URL =
-  (typeof import.meta !== 'undefined' &&
-    import.meta.env &&
-    import.meta.env.VITE_API_URL) ||
-  (isLocal || isVercel
-    ? BASE_URL
-    : window.location.origin);
+// Use the Render backend everywhere except when running the site locally.
+const BASE_URL = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
+  ? 'http://127.0.0.1:8000'
+  : 'https://about-1code.onrender.com';
 
 async function apiFetch(path, options = {}) {
   const { headers, ...restOptions } = options;
