@@ -1,16 +1,28 @@
-const BASE_URL = window.location.origin.includes('127.0.0.1') || window.location.origin.includes('localhost')
-  ? 'https://about-1code.onrender.com'
-  : window.location.origin;
+// API Base URL
+const BASE_URL =
+  import.meta.env?.VITE_API_URL ||
+  'https://about-1code.onrender.com';
 
 async function apiFetch(path, options = {}) {
-  const { headers, ...restOptions } = options;
-  const customHeaders = { Accept: 'application/json', ...headers };
+  const { headers = {}, ...restOptions } = options;
+
+  const customHeaders = {
+    Accept: 'application/json',
+    ...headers,
+  };
+
   const adminKey = localStorage.getItem('1code_admin_key');
+
   if (path.startsWith('/api/admin') && adminKey) {
     customHeaders['X-Admin-Key'] = adminKey;
   }
 
-  const res = await fetch(BASE_URL + path, {
+  const url = `${BASE_URL}${path}`;
+
+  // Debug (remove after testing)
+  console.log('Fetching:', url);
+
+  const res = await fetch(url, {
     credentials: 'include',
     ...restOptions,
     headers: customHeaders,
@@ -18,36 +30,71 @@ async function apiFetch(path, options = {}) {
 
   if (!res.ok) {
     const payload = await res.json().catch(() => null);
-    throw new Error(payload?.detail || res.statusText || 'Request failed');
+
+    throw new Error(
+      payload?.detail ||
+      `HTTP ${res.status}: ${res.statusText}`
+    );
   }
 
   return res.json();
 }
 
-export const getAdminChallenges = () => apiFetch('/api/admin/challenges');
-export const getAdminChallenge = (id) => apiFetch(`/api/admin/challenges/${id}`);
+// =======================
+// Admin APIs
+// =======================
+
+export const getAdminChallenges = () =>
+  apiFetch('/api/admin/challenges');
+
+export const getAdminChallenge = (id) =>
+  apiFetch(`/api/admin/challenges/${id}`);
+
 export const getAdminChallengeById = getAdminChallenge;
 
 export const createChallenge = (payload) =>
   apiFetch('/api/admin/challenges', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify(payload),
   });
 
 export const updateAdminChallenge = (id, payload) =>
   apiFetch(`/api/admin/challenges/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify(payload),
   });
 
 export const deleteAdminChallenge = (id) =>
-  apiFetch(`/api/admin/challenges/${id}`, { method: 'DELETE' });
+  apiFetch(`/api/admin/challenges/${id}`, {
+    method: 'DELETE',
+  });
 
-export const getSubmissions = () => apiFetch('/api/submissions');
-export const getSubmissionDetail = (id) => apiFetch(`/api/submissions/${id}`);
-export const getEvaluation = (id) => apiFetch(`/api/evaluate/${id}`);
-export const getLeaderboard = () => apiFetch('/api/leaderboard');
-export const getLeaderboardStats = () => apiFetch('/api/leaderboard/stats');
-export const getLeaderboardBySlug = (slug) => apiFetch(`/api/leaderboard/stats?challenge_slug=${encodeURIComponent(slug)}`);
+// =======================
+// User APIs
+// =======================
+
+export const getSubmissions = () =>
+  apiFetch('/api/submissions');
+
+export const getSubmissionDetail = (id) =>
+  apiFetch(`/api/submissions/${id}`);
+
+export const getEvaluation = (id) =>
+  apiFetch(`/api/evaluate/${id}`);
+
+export const getLeaderboard = () =>
+  apiFetch('/api/leaderboard');
+
+export const getLeaderboardStats = () =>
+  apiFetch('/api/leaderboard/stats');
+
+export const getLeaderboardBySlug = (slug) =>
+  apiFetch(
+    `/api/leaderboard/stats?challenge_slug=${encodeURIComponent(slug)}`
+  );
