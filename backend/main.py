@@ -60,6 +60,7 @@ default_origins = [
     "https://1code-swart.vercel.app",
     "https://1codeadmin-124as535w-vebhav-sharma-s-projects.vercel.app",
     "https://about-1code.onrender.com",
+    "https://1codeadmin.vercel.app",
 ]
 
 # FRONTEND_ORIGIN can hold a comma-separated list for extra/preview deploy URLs,
