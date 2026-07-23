@@ -52,15 +52,25 @@ seed_admin()
 app = FastAPI(title="1Code API", version="1.0.0")
 
 default_origins = [
+
     "http://localhost:5500",
+
     "http://127.0.0.1:5500",
+
     "http://localhost:3000",
+
     "http://127.0.0.1:3000",
+
     "null",  # Allows file:// protocol (browser sends Origin: null)
+
     "https://1code-swart.vercel.app",
+
     "https://1codeadmin-124as535w-vebhav-sharma-s-projects.vercel.app",
+
     "https://about-1code.onrender.com",
+
     "https://1codeadmin.vercel.app",
+
 ]
 
 # FRONTEND_ORIGIN can hold a comma-separated list for extra/preview deploy URLs,
@@ -72,12 +82,15 @@ env_origins = [
 ]
 
 frontend_origins = list(set(default_origins + env_origins))
-print(f"CORS allowed origins: {frontend_origins}")
 
-# Vercel assigns a NEW random hash to the URL on every deployment unless you set
-# a stable production alias. This regex auto-allows any future deployment of the
-# two 1Code Vercel projects so CORS doesn't break again after your next deploy.
-frontend_origin_regex = r"https://(1code-swart|1codeadmin-[a-z0-9]+-vebhav-sharma-s-projects)(-[a-z0-9]+)?\.vercel\.app"
+# Vercel gives every preview deployment a unique auto-generated URL
+# (e.g. 1code-5fh6hadyn-vebhav-sharma-s-projects.vercel.app) that changes
+# on every push. Rather than adding each one by hand, trust any subdomain
+# under these two Vercel projects via regex, in addition to the fixed list above.
+frontend_origin_regex = r"^https:\/\/(1code|1codeadmin)(-[a-z0-9]+)?-vebhav-sharma-s-projects\.vercel\.app$|^https:\/\/1code-swart\.vercel\.app$"
+
+print(f"CORS allowed origins: {frontend_origins}")
+print(f"CORS allowed origin regex: {frontend_origin_regex}")
 
 app.add_middleware(
     CORSMiddleware,
