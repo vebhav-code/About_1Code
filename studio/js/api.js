@@ -1,5 +1,5 @@
 const BASE_URL = window.location.origin.includes('127.0.0.1') || window.location.origin.includes('localhost')
-  ? 'http://127.0.0.1:8000'
+  ? 'https://about-1code.onrender.com'
   : window.location.origin;
 
 async function apiFetch(path, options = {}) {
