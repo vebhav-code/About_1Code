@@ -58,7 +58,7 @@ default_origins = [
     "http://127.0.0.1:3000",
     "null",  # Allows file:// protocol (browser sends Origin: null)
     "https://1code-swart.vercel.app",
-    "https://1codeadmin-6tkeqp43n-vebhav-sharma-s-projects.vercel.app",
+    "https://1codeadmin-124as535w-vebhav-sharma-s-projects.vercel.app",
 ]
 
 # FRONTEND_ORIGIN can hold a comma-separated list for extra/preview deploy URLs,
@@ -72,9 +72,15 @@ env_origins = [
 frontend_origins = list(set(default_origins + env_origins))
 print(f"CORS allowed origins: {frontend_origins}")
 
+# Vercel assigns a NEW random hash to the URL on every deployment unless you set
+# a stable production alias. This regex auto-allows any future deployment of the
+# two 1Code Vercel projects so CORS doesn't break again after your next deploy.
+frontend_origin_regex = r"https://(1code-swart|1codeadmin-[a-z0-9]+-vebhav-sharma-s-projects)(-[a-z0-9]+)?\.vercel\.app"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=frontend_origins,
+    allow_origin_regex=frontend_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
