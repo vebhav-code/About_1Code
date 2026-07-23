@@ -5,7 +5,7 @@
    the existing table structure.
 =========================================== */
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://about-1code.onrender.com";
 
 const MEDAL = ["🥇", "🥈", "🥉"];
 

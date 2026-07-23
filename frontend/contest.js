@@ -4,7 +4,7 @@
    API: /api/sessions/* (start, chat, save-code, submit)
 =========================================== */
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://about-1code.onrender.com";
 const params = new URLSearchParams(window.location.search);
 const CHALLENGE_SLUG = params.get('slug');
 if (!CHALLENGE_SLUG) {

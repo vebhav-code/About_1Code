@@ -5,7 +5,7 @@
    overall feedback into the existing HTML.
 =========================================== */
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://about-1code.onrender.com";
 
 document.addEventListener("DOMContentLoaded", async () => {
     // Support both ?id=N (session submit redirect) and legacy sessionStorage path
