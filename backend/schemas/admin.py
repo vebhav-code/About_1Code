@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class AdminChallengeBase(BaseModel):
@@ -18,6 +18,16 @@ class AdminChallengeBase(BaseModel):
 
 class AdminChallengeCreate(AdminChallengeBase):
     slug: str
+
+    @field_validator("slug")
+    @classmethod
+    def sanitize_slug(cls, value: str) -> str:
+        # Strip whitespace (spaces, tabs, newlines) that can sneak in from
+        # copy-pasting, and collapse to a clean, database-safe slug.
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Slug cannot be empty or whitespace only")
+        return cleaned
 
 
 class AdminChallengeUpdate(BaseModel):
