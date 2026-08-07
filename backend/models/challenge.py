@@ -26,6 +26,8 @@ class Challenge(Base):
     scenario = Column(String)
     rules = Column(String)
     time_limit = Column(Integer)
+    mode = Column(String, nullable=False, default="individual")
+    team_size = Column(Integer, nullable=False, default=1)
 
     created_at = Column(DateTime(timezone=True),
                         server_default=func.now())

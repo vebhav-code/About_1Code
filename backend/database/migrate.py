@@ -16,6 +16,9 @@ MIGRATION_FILES = [
     "migration_challenge_content.sql",
     "migration_session_user.sql",
     "migration_session_hypothesis.sql",
+    "migration_team_mode.sql",
+    "migration_teams.sql",
+    "migration_team_sessions.sql",
 ]
 
 

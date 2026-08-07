@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Lobby - 1Code</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: var(--bg-color, #0f172a);
+      color: var(--text-color, #f8fafc);
+      padding: 20px;
+    }
+    
+    .lobby-card {
+      background: var(--surface-color, rgba(30, 41, 59, 0.7));
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+      border-radius: 12px;
+      padding: 30px;
+      width: 100%;
+      max-width: 500px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .lobby-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .lobby-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .lobby-subtitle {
+      font-size: 0.9rem;
+      color: var(--text-secondary, #94a3b8);
+    }
+
+    .invite-section {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .invite-label {
+      font-size: 0.8rem;
+      color: var(--text-secondary, #94a3b8);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .invite-link-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .invite-link-input {
+      flex: 1;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+      color: var(--text-color, #f8fafc);
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .roster-section {
+      margin-bottom: 24px;
+    }
+
+    .roster-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-secondary, #94a3b8);
+    }
+
+    .roster-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .roster-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .roster-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--primary-color, #3b82f6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .roster-name {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .roster-badge {
+      font-size: 0.75rem;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2px 8px;
+      border-radius: 12px;
+      color: var(--text-secondary, #94a3b8);
+    }
+
+    .mic-check-section {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .mic-btn {
+      background: var(--surface-color, #1e293b);
+      border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .mic-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .mic-level-container {
+      flex: 1;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .mic-level-bar {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 0%;
+      background: #10b981;
+      transition: width 0.1s;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .error-msg {
+      color: #ef4444;
+      font-size: 0.85rem;
+      margin-top: 10px;
+      display: none;
+    }
+
+    /* Wait message for non-leaders */
+    .wait-msg {
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--text-secondary, #94a3b8);
+      margin-top: 16px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="lobby-card">
+    <div class="lobby-header">
+      <div class="lobby-title" id="lobbyTitle">Loading Team...</div>
+      <div class="lobby-subtitle" id="lobbySubtitle">Waiting for members</div>
+    </div>
+
+    <div class="invite-section">
+      <div class="invite-label">Invite Code</div>
+      <div class="invite-link-row">
+        <input type="text" id="inviteCodeInput" class="invite-link-input" readonly>
+        <button id="copyInviteBtn" class="btn btn-ghost">Copy</button>
+      </div>
+    </div>
+
+    <div class="roster-section">
+      <div class="roster-header">
+        <span>Team Roster</span>
+        <span id="rosterCount">1/4</span>
+      </div>
+      <div class="roster-list" id="rosterList">
+        <!-- Members injected here -->
+      </div>
+    </div>
+
+    <div class="mic-check-section">
+      <div style="font-size: 0.85rem; font-weight: 500; display: flex; align-items: center; gap: 6px;" id="micCheckLabel">
+        🎙️ Mic Check
+      </div>
+      <div class="mic-level-container">
+        <div class="mic-level-bar" id="micLevelBar"></div>
+      </div>
+    </div>
+
+    <div class="error-msg" id="lobbyError"></div>
+
+    <div class="actions" id="actionContainer">
+      <button id="startChallengeBtn" class="btn btn-primary" style="width: 100%; display: none;" disabled>
+        Start Challenge
+      </button>
+      <div id="waitMessage" class="wait-msg">Waiting for team leader to start...</div>
+    </div>
+  </div>
+
+  <script src="team-lobby.js"></script>
+</body>
+</html>

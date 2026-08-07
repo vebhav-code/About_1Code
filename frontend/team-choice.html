@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>1Code — Team Selection</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="team-choice.css" />
+  </head>
+  <body>
+    <div class="bg-glow bg-glow-1" aria-hidden="true"></div>
+    <div class="bg-glow bg-glow-2" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <div style="padding: 0 24px;">
+      <header class="nav">
+        <div class="nav-inner">
+          <a href="index.html" class="logo">1<span class="logo-accent">Code</span></a>
+          <nav class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="dashboard.html">Challenges</a>
+            <a href="leaderboard.html">Leaderboard</a>
+          </nav>
+          <div class="nav-actions">
+            <a href="auth.html" class="btn btn-ghost">Sign In</a>
+          </div>
+        </div>
+      </header>
+
+      <main style="max-width: var(--max-width); margin: 40px auto; min-height: 60vh;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 id="pageTitle" style="font-family: var(--font-display); font-size: 2.2rem;">Team Mode Setup</h1>
+          <p id="pageSubtitle" style="color: var(--text-secondary);">Create or join a team to compete in this debugging challenge.</p>
+        </div>
+
+        <div id="choiceContainer" style="display: flex; justify-content: center; align-items: center;">
+          <p style="color: var(--text-muted);">Loading challenge details…</p>
+        </div>
+      </main>
+    </div>
+
+    <script type="module">
+      import { openTeamChoiceModal } from './team-choice.js';
+
+      const API_BASE = (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost")
+        ? "http://127.0.0.1:8000"
+        : "https://about-1code.onrender.com";
+
+      const params = new URLSearchParams(window.location.search);
+      const slug = params.get('slug');
+
+      async function init() {
+        if (!slug) {
+          window.location.href = 'dashboard.html';
+          return;
+        }
+
+        try {
+          const res = await fetch(`${API_BASE}/challenge/${slug}/details`);
+          if (!res.ok) throw new Error("Challenge not found");
+          const challenge = await res.json();
+
+          if (challenge.mode === 'individual') {
+            window.location.href = `contest.html?slug=${encodeURIComponent(slug)}`;
+            return;
+          }
+
+          document.getElementById('pageTitle').textContent = `Team Setup: ${challenge.title}`;
+          openTeamChoiceModal(challenge);
+        } catch (err) {
+          document.getElementById('choiceContainer').innerHTML = `
+            <p style="color: var(--danger);">Could not load challenge details. <a href="dashboard.html" style="color: var(--blue); text-decoration: underline;">Back to Dashboard</a></p>
+          `;
+        }
+      }
+
+      init();
+    </script>
+    <script src="session.js"></script>
+  </body>
+</html>

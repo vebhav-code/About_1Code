@@ -9,6 +9,7 @@
 
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="leaderboard.css" />
+    <link rel="stylesheet" href="team-choice.css" />
 
     <link
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
@@ -49,13 +50,23 @@
     </section>
     <section class="leaderboard-section">
       <div class="contest-container">
+        <!-- Team Tab Nav -->
+        <div class="team-tab-nav" style="max-width: 300px; margin: 0 auto 20px;">
+          <button class="team-tab-btn active" id="tabIndividual" type="button">
+            👤 Individual
+          </button>
+          <button class="team-tab-btn" id="tabTeam" type="button">
+            👥 Team
+          </button>
+        </div>
+        
         <div class="glass-card leaderboard-card">
           <table>
             <thead>
               <tr>
                 <th>Rank</th>
 
-                <th>Developer</th>
+                <th id="colHeaderName">Developer</th>
 
                 <th>Challenge</th>
 

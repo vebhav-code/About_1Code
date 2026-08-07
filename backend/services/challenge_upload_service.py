@@ -15,8 +15,6 @@ class ChallengeUploadService:
     def __init__(self, db: Session):
         self.db = db
 
-
-
     def create_challenge(self, payload: AdminChallengeCreate) -> Dict[str, object]:
         existing = self.db.query(Challenge).filter(Challenge.slug == payload.slug).first()
         if existing is not None:
@@ -36,6 +34,8 @@ class ChallengeUploadService:
             category=payload.category,
             starter_code=payload.starter_code,
             official_solution=payload.official_solution,
+            mode=payload.mode,
+            team_size=payload.team_size,
             folder_name=payload.slug,
             is_active=True,
         )
@@ -59,6 +59,20 @@ class ChallengeUploadService:
         if challenge is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Challenge not found")
 
+        merged_mode = payload.get("mode", challenge.mode or "individual")
+        merged_team_size = payload.get("team_size", challenge.team_size if challenge.team_size is not None else 1)
+
+        if merged_mode == "team" and (merged_team_size is None or merged_team_size < 2):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="team_size must be >= 2 when mode is 'team'",
+            )
+        if merged_mode == "individual" and merged_team_size != 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="team_size must be 1 when mode is 'individual'",
+            )
+
         for field in [
             "title",
             "description",
@@ -70,6 +84,8 @@ class ChallengeUploadService:
             "category",
             "starter_code",
             "official_solution",
+            "mode",
+            "team_size",
         ]:
             if field in payload:
                 setattr(challenge, field, payload[field])
@@ -102,6 +118,8 @@ class ChallengeUploadService:
             "is_active": challenge.is_active if challenge.is_active is not None else True,
             "created_at": challenge.created_at,
             "category": challenge.category or "",
+            "mode": challenge.mode or "individual",
+            "team_size": challenge.team_size if challenge.team_size is not None else 1,
         }
 
     def _serialize_detail(self, challenge: Challenge) -> Dict[str, object]:
@@ -109,5 +127,3 @@ class ChallengeUploadService:
         data["starter_code"] = challenge.starter_code or ""
         data["official_solution"] = challenge.official_solution or ""
         return data
-
-

@@ -17,6 +17,7 @@
 
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="contest.css" />
+    <link rel="stylesheet" href="team-choice.css" />
   </head>
 
   <body>
@@ -180,6 +181,18 @@
     <!-- ========================================= -->
     <section class="workspace-section" id="workspaceSection" style="display:none">
       <div class="contest-container">
+        <!-- Team Presence Bar -->
+        <div id="teamPresenceBar" class="team-presence-bar" style="display: none;">
+          <div class="team-presence-header">
+            <span id="wsConnectionDot" class="ws-dot ws-dot--offline" title="Connecting…"></span>
+            <span id="workspaceTeamName" style="font-weight: 600;">Team Workspace</span>
+            <button id="toggleMicBtn" class="btn btn-ghost mic-toggle-btn">🔇 Unmute</button>
+          </div>
+          <div id="teamAvatars" class="team-avatars-container">
+            <!-- Avatars injected via JS -->
+          </div>
+        </div>
+
         <div class="challenge-workspace">
 
           <!-- Code Pane -->
@@ -191,14 +204,17 @@
               </span>
               <span id="saveStatus" class="save-status" title="Auto-save status">—</span>
             </div>
-            <textarea
-              id="codeEditor"
-              spellcheck="false"
-              autocomplete="off"
-              autocorrect="off"
-              autocapitalize="off"
-              placeholder="Your code will appear here once the challenge starts..."
-            ></textarea>
+            <div class="code-editor-wrapper">
+              <textarea
+                id="codeEditor"
+                spellcheck="false"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                placeholder="Your code will appear here once the challenge starts..."
+              ></textarea>
+              <div id="cursorOverlay" class="cursor-overlay" aria-hidden="true"></div>
+            </div>
           </div>
 
           <!-- Chat Pane -->
@@ -210,9 +226,12 @@
               </span>
               <span class="pane-badge">Gemini</span>
             </div>
-            <div id="chatMessages" role="log" aria-live="polite">
-              <div class="chat-welcome">
-                <p>👋 Hi! I'm your debugging partner.<br/>Ask me anything about the challenge — I'll help you find the bug without giving it away directly.</p>
+            <div id="chatMessagesWrapper">
+              <div id="promptTypingPreview" class="prompt-typing-preview" style="display:none;"></div>
+              <div id="chatMessages" role="log" aria-live="polite">
+                <div class="chat-welcome">
+                  <p>👋 Hi! I'm your debugging partner.<br/>Ask me anything about the challenge — I'll help you find the bug without giving it away directly.</p>
+                </div>
               </div>
             </div>
             <form id="chatForm" class="chat-input-row" novalidate>
@@ -240,6 +259,7 @@
       </div>
     </section>
 
+    <script type="module" src="team-choice.js"></script>
     <script src="contest.js"></script>
     <script src="session.js"></script>
   </body>

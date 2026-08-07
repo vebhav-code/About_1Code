@@ -327,6 +327,7 @@
     border: 1px solid var(--glass-border);
     border-radius: var(--radius);
     overflow: hidden;
+    -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
 }
 
@@ -371,9 +372,17 @@
     transition: color 0.2s ease;
 }
 
-#codeEditor {
+.code-editor-wrapper {
+    position: relative;
     flex: 1;
+    overflow: hidden;
+}
+
+#codeEditor {
+    position: relative;
+    z-index: 1;
     width: 100%;
+    height: 100%;
     background: #0d1020;
     color: #c9d1d9;
     border: none;
@@ -387,6 +396,62 @@
     white-space: pre;
     overflow-wrap: normal;
     overflow-x: auto;
+}
+
+#cursorOverlay {
+    position: absolute;
+    inset: 18px 20px 18px 20px;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.remote-cursor {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+    font-size: 0.75rem;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.remote-cursor .cursor-flag {
+    width: 2px;
+    height: 1.35em;
+    background: #6d28d9;
+    border-radius: 2px;
+    box-shadow: 0 0 8px rgba(109, 40, 217, 0.75);
+}
+
+.remote-cursor .cursor-label {
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: rgba(55, 65, 81, 0.92);
+    color: #f8fafc;
+}
+
+#promptTypingPreview {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    border-radius: 14px;
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    color: #e0f2fe;
+    font-size: 0.88rem;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+
+#promptTypingPreview::before {
+    content: "Live draft";
+    display: inline-block;
+    margin-right: 8px;
+    opacity: 0.85;
+    font-size: 0.8rem;
 }
 
 #codeEditor::placeholder {
@@ -598,4 +663,132 @@
         width: 100%;
         justify-content: center;
     }
+}
+
+/* ===========================================
+   Team Presence Bar
+=========================================== */
+
+.team-presence-bar {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    gap: 20px;
+}
+
+.team-presence-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.team-avatars-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.team-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--purple);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    position: relative;
+    border: 2px solid var(--glass-border);
+}
+
+.team-avatar.muted::after {
+    content: '🔇';
+    position: absolute;
+    bottom: -6px;
+    right: -6px;
+    font-size: 0.7rem;
+    background: rgba(0,0,0,0.5);
+    border-radius: 50%;
+    padding: 2px;
+}
+
+.team-avatar.offline {
+    opacity: 0.4;
+    filter: grayscale(100%);
+}
+
+.mic-toggle-btn {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    transition: background 0.2s, box-shadow 0.2s;
+}
+
+/* Mic is LIVE — green accent so it's visually obvious */
+.btn-active-voice {
+    background: rgba(16, 185, 129, 0.15) !important;
+    border-color: #10b981 !important;
+    color: #10b981 !important;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+}
+
+/* Self-avatar gets a colored ring */
+.team-avatar.self {
+    border-color: var(--primary, #5B8DEF);
+    box-shadow: 0 0 0 2px var(--primary, #5B8DEF);
+}
+
+/* WS connection status dot */
+.ws-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: background 0.3s;
+}
+
+.ws-dot--online  { background: #10b981; box-shadow: 0 0 4px #10b981; }
+.ws-dot--offline { background: #6b7280; }
+
+/* ===========================================
+   Team Toast notifications (code sync, etc.)
+=========================================== */
+
+.team-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: rgba(30, 41, 59, 0.95);
+    color: #f8fafc;
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: 1px solid rgba(91, 141, 239, 0.4);
+    font-size: 0.875rem;
+    font-weight: 500;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+    max-width: 320px;
+    /* Stack multiple toasts */
+    margin-bottom: 0;
+}
+
+/* Each successive toast shifts up — JS creates a new element per toast */
+.team-toast + .team-toast { margin-bottom: 48px; }
+
+.team-toast--visible {
+    opacity: 1;
+    transform: translateY(0);
 }

@@ -23,12 +23,14 @@ router = APIRouter(prefix="/api/leaderboard", tags=["leaderboard"])
 
 
 @router.get("", response_model=List[LeaderboardEntryResponse])
-def get_leaderboard(db: Session = Depends(get_db)):
+def get_leaderboard(mode: Optional[str] = "individual", db: Session = Depends(get_db)):
     """
-    Get the top 100 ranked submissions.
+    Get the top 100 ranked submissions filtered by mode ('individual' or 'team').
     Ordered by highest total score first, then by earlier submission time.
     """
-    results = db.query(
+    target_mode = mode.lower() if mode else "individual"
+    
+    query = db.query(
         Evaluation.submission_id,
         User.name.label("user_name"),
         Evaluation.total_score,
@@ -40,7 +42,15 @@ def get_leaderboard(db: Session = Depends(get_db)):
         Challenge, Submission.challenge_id == Challenge.id
     ).outerjoin(
         User, Submission.user_id == User.id
-    ).order_by(
+    )
+
+    if hasattr(Challenge, "mode"):
+        if target_mode == "team":
+            query = query.filter(Challenge.mode == "team")
+        else:
+            query = query.filter(Challenge.mode != "team")
+
+    results = query.order_by(
         desc(Evaluation.total_score),
         asc(Submission.submitted_at)
     ).limit(100).all()
@@ -48,13 +58,16 @@ def get_leaderboard(db: Session = Depends(get_db)):
     entry_list = []
     for index, row in enumerate(results, start=1):
         formatted_time = row.submitted_at.strftime("%Y-%m-%d %H:%M") if row.submitted_at else ""
+        
         entry_list.append(
             LeaderboardEntryResponse(
                 rank=index,
                 name=row.user_name if row.user_name else "Anonymous",
                 score=row.total_score,
                 challenge=row.challenge_title,
-                submission_time=formatted_time
+                submission_time=formatted_time,
+                team_name=row.user_name + "'s Team" if target_mode == "team" and row.user_name else None,
+                members=[row.user_name] if target_mode == "team" and row.user_name else None
             )
         )
     return entry_list

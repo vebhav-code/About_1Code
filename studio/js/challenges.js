@@ -10,6 +10,13 @@ function diffBadge(diff) {
   return `<span class="badge badge-neutral">${diff || 'N/A'}</span>`;
 }
 
+function modeBadge(mode, teamSize) {
+  if (mode === 'team') {
+    return `<span class="badge badge-info">Team (${teamSize || 4})</span>`;
+  }
+  return `<span class="badge badge-neutral">Individual</span>`;
+}
+
 let _allChallenges = [];
 
 function renderChallenges(challenges) {
@@ -17,7 +24,7 @@ function renderChallenges(challenges) {
   if (!tbody) return;
 
   if (!challenges.length) {
-    tbody.innerHTML = `<tr class="table-empty"><td colspan="6">No challenges found. Upload one to get started.</td></tr>`;
+    tbody.innerHTML = `<tr class="table-empty"><td colspan="7">No challenges found. Upload one to get started.</td></tr>`;
     return;
   }
 
@@ -26,6 +33,7 @@ function renderChallenges(challenges) {
       <td><span class="mono">${c.slug}</span></td>
       <td><span style="font-weight:600">${c.title}</span></td>
       <td>${diffBadge(c.difficulty)}</td>
+      <td>${modeBadge(c.mode, c.team_size)}</td>
       <td><span class="badge ${c.is_active ? 'badge-active' : 'badge-inactive'}">${c.is_active ? 'Active' : 'Inactive'}</span></td>
       <td>${fmt(c.created_at)}</td>
       <td>

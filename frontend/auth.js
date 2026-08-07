@@ -5,8 +5,9 @@
    store {user_id, name} in localStorage after a successful call.
    ========================================================= */
 
-// Update this once the backend is deployed to Render.
-const API_BASE = 'https://about-1code.onrender.com';
+const API_BASE = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
+  ? 'http://127.0.0.1:8000'
+  : 'https://about-1code.onrender.com';
 
 document.addEventListener('DOMContentLoaded', () => {
 

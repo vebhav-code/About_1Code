@@ -13,6 +13,8 @@ from routes.evaluation import router as evaluation_router
 from routes.leaderboard import router as leaderboard_router
 from routes.admin import router as admin_router, login_router as admin_login_router
 from routes.session import router as session_router
+from routes.team import router as team_router
+from routes.team_ws import router as team_ws_router
 
 # Register models to ensure they are loaded into Base metadata
 import models.challenge
@@ -21,6 +23,8 @@ import models.evaluation
 import models.user
 import models.session
 import models.chat_message
+import models.team
+import models.team_member
 
 
 def seed_admin():
@@ -113,3 +117,5 @@ app.include_router(leaderboard_router)
 app.include_router(admin_login_router)
 app.include_router(admin_router)
 app.include_router(session_router)
+app.include_router(team_router)
+app.include_router(team_ws_router)

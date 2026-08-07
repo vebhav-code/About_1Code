@@ -47,6 +47,20 @@
       </div>
     </div>
 
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+      <div class="form-group">
+        <label for="mode" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Mode</label>
+        <select id="mode" name="mode" required class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px;">
+          <option value="individual" selected>Individual</option>
+          <option value="team">Team</option>
+        </select>
+      </div>
+      <div class="form-group" id="team-size-group" style="display:none;">
+        <label for="team_size" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Team Size</label>
+        <input type="number" id="team_size" name="team_size" value="4" min="2" max="8" class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px;" />
+      </div>
+    </div>
+
     <div class="form-group">
       <label for="description" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Description</label>
       <textarea id="description" name="description" required rows="3" class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; font-family:inherit;"></textarea>

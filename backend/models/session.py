@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database.connection import Base
 
@@ -8,9 +9,13 @@ class ChallengeSession(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     challenge_id = Column(Integer, ForeignKey("challenges.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)
     name = Column(String, nullable=False)
     hypothesis = Column(Text, nullable=True)
     current_code = Column(Text, nullable=False, default="")
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     submitted_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User")
+    team = relationship("Team")

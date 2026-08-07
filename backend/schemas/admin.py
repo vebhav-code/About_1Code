@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -14,6 +14,8 @@ class AdminChallengeBase(BaseModel):
     category: str
     starter_code: str
     official_solution: str
+    mode: Literal["individual", "team"] = "individual"
+    team_size: int = 1
 
 
 class AdminChallengeCreate(AdminChallengeBase):
@@ -29,6 +31,16 @@ class AdminChallengeCreate(AdminChallengeBase):
             raise ValueError("Slug cannot be empty or whitespace only")
         return cleaned
 
+    @field_validator("team_size")
+    @classmethod
+    def validate_team_size(cls, value: int, info) -> int:
+        mode = info.data.get("mode", "individual")
+        if mode == "team" and value < 2:
+            raise ValueError("team_size must be >= 2 when mode is 'team'")
+        if mode == "individual" and value != 1:
+            raise ValueError("team_size must be 1 when mode is 'individual'")
+        return value
+
 
 class AdminChallengeUpdate(BaseModel):
     title: Optional[str] = None
@@ -41,6 +53,21 @@ class AdminChallengeUpdate(BaseModel):
     category: Optional[str] = None
     starter_code: Optional[str] = None
     official_solution: Optional[str] = None
+    mode: Optional[Literal["individual", "team"]] = None
+    team_size: Optional[int] = None
+
+    @field_validator("team_size")
+    @classmethod
+    def validate_team_size(cls, value: Optional[int], info) -> Optional[int]:
+        if value is None:
+            return value
+        mode = info.data.get("mode")
+        if mode is not None:
+            if mode == "team" and value < 2:
+                raise ValueError("team_size must be >= 2 when mode is 'team'")
+            if mode == "individual" and value != 1:
+                raise ValueError("team_size must be 1 when mode is 'individual'")
+        return value
 
 
 class AdminChallengeResponse(BaseModel):
@@ -58,6 +85,9 @@ class AdminChallengeResponse(BaseModel):
     is_active: bool
     created_at: datetime
     category: Optional[str] = ""
+    mode: str = "individual"
+    team_size: int = 1
+
 
 class AdminChallengeDetailResponse(AdminChallengeResponse):
     starter_code: str = ""

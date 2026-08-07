@@ -5,13 +5,41 @@
    the existing table structure.
 =========================================== */
 
-const API_BASE = "https://about-1code.onrender.com";
+const API_BASE = (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost")
+  ? "http://127.0.0.1:8000"
+  : "https://about-1code.onrender.com";
 
 const MEDAL = ["🥇", "🥈", "🥉"];
 
+let currentMode = "individual";
+
 document.addEventListener("DOMContentLoaded", async () => {
+    setupModeToggle();
     await Promise.all([loadLeaderboard(), loadStats()]);
 });
+
+function setupModeToggle() {
+    const tabIndividual = document.getElementById("tabIndividual");
+    const tabTeam = document.getElementById("tabTeam");
+
+    if (!tabIndividual || !tabTeam) return;
+
+    tabIndividual.addEventListener("click", async () => {
+        if (currentMode === "individual") return;
+        currentMode = "individual";
+        tabIndividual.classList.add("active");
+        tabTeam.classList.remove("active");
+        await loadLeaderboard();
+    });
+
+    tabTeam.addEventListener("click", async () => {
+        if (currentMode === "team") return;
+        currentMode = "team";
+        tabTeam.classList.add("active");
+        tabIndividual.classList.remove("active");
+        await loadLeaderboard();
+    });
+}
 
 /* ===========================================
    Load Top-100 Rankings
@@ -29,8 +57,13 @@ async function loadLeaderboard() {
             </td>
         </tr>`;
 
+    const colHeaderName = document.getElementById("colHeaderName");
+    if (colHeaderName) {
+        colHeaderName.textContent = currentMode === "team" ? "Team" : "Developer";
+    }
+
     try {
-        const res = await fetch(`${API_BASE}/api/leaderboard`);
+        const res = await fetch(`${API_BASE}/api/leaderboard?mode=${currentMode}`);
 
         if (!res.ok) {
             throw new Error(`Server returned ${res.status}`);
@@ -43,7 +76,7 @@ async function loadLeaderboard() {
                 <tr>
                     <td colspan="5" style="text-align:center;padding:50px;
                         color:var(--text-secondary);">
-                        No submissions yet — be the first!
+                        No ${currentMode === "team" ? "team" : ""} submissions yet — be the first!
                     </td>
                 </tr>`;
             return;
@@ -56,10 +89,25 @@ async function loadLeaderboard() {
                         ? MEDAL[entry.rank - 1]
                         : entry.rank;
 
+                let nameDisplay = "";
+                if (currentMode === "team" || entry.team_name) {
+                    const tName = entry.team_name || entry.name;
+                    const membersList = (entry.members && entry.members.length > 0)
+                        ? entry.members.join(", ")
+                        : "";
+                    nameDisplay = `
+                        <div>
+                            <div style="font-weight:600;">👥 ${escapeHtml(tName)}</div>
+                            ${membersList ? `<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px;" title="Members: ${escapeHtml(membersList)}">Members: ${escapeHtml(membersList)}</div>` : ''}
+                        </div>`;
+                } else {
+                    nameDisplay = escapeHtml(entry.name);
+                }
+
                 return `
                     <tr>
                         <td>${rankDisplay}</td>
-                        <td>${escapeHtml(entry.name)}</td>
+                        <td>${nameDisplay}</td>
                         <td>${escapeHtml(entry.challenge)}</td>
                         <td><strong style="color:#5B8DEF;">${entry.score}</strong></td>
                         <td style="font-family:'JetBrains Mono',monospace;font-size:.85rem;">

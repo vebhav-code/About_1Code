@@ -18,6 +18,13 @@ export async function initChallengeDetails(id) {
     document.getElementById('challenge-scenario').textContent = details.scenario || 'No scenario provided.';
     document.getElementById('challenge-rules').textContent = Array.isArray(details.rules) ? details.rules.join(', ') : details.rules || 'No rules provided.';
     document.getElementById('challenge-difficulty').innerHTML = getDifficultyBadge(details.difficulty);
+    const modeEl = document.getElementById('challenge-mode');
+    if (modeEl) {
+      const isTeam = details.mode === 'team';
+      const modeStr = isTeam ? `Team (${details.team_size || 4})` : 'Individual';
+      const badgeClass = isTeam ? 'badge-info' : 'badge-neutral';
+      modeEl.innerHTML = `<span class="badge ${badgeClass}">${modeStr}</span>`;
+    }
     document.getElementById('challenge-time').textContent = `${details.time_limit || 45} minutes`;
     document.getElementById('challenge-status').innerHTML = details.is_active 
       ? `<span class="badge badge-active">Active</span>` 
@@ -133,6 +140,17 @@ export async function initChallengeDetails(id) {
             </select>
           </div>
           <div class="form-group">
+            <label class="form-label" for="edit-mode">Mode</label>
+            <select id="edit-mode" class="form-select">
+              <option value="individual" ${(details.mode || 'individual') === 'individual' ? 'selected' : ''}>Individual</option>
+              <option value="team" ${details.mode === 'team' ? 'selected' : ''}>Team</option>
+            </select>
+          </div>
+          <div class="form-group" id="edit-team-size-group" style="${details.mode === 'team' ? '' : 'display:none;'}">
+            <label class="form-label" for="edit-team-size">Team Size</label>
+            <input type="number" id="edit-team-size" class="form-input" min="2" max="8" value="${details.team_size || 4}">
+          </div>
+          <div class="form-group">
             <label class="form-label" for="edit-time">Time Limit (minutes)</label>
             <input type="number" id="edit-time" class="form-input" value="${details.time_limit || 45}">
           </div>
@@ -170,15 +188,38 @@ export async function initChallengeDetails(id) {
     document.getElementById('edit-cancel-btn').addEventListener('click', close);
     backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
 
+    const editModeSelect = document.getElementById('edit-mode');
+    const editTeamGroup = document.getElementById('edit-team-size-group');
+    const editTeamInput = document.getElementById('edit-team-size');
+    if (editModeSelect && editTeamGroup) {
+      editModeSelect.addEventListener('change', () => {
+        if (editModeSelect.value === 'team') {
+          editTeamGroup.style.display = '';
+          if (!editTeamInput.value || parseInt(editTeamInput.value, 10) < 2) {
+            editTeamInput.value = '4';
+          }
+        } else {
+          editTeamGroup.style.display = 'none';
+          editTeamInput.value = '1';
+        }
+      });
+    }
+
     document.getElementById('edit-save-btn').addEventListener('click', async () => {
       const saveBtn = document.getElementById('edit-save-btn');
       saveBtn.textContent = 'Saving...';
       saveBtn.disabled = true;
 
+      const mode = document.getElementById('edit-mode').value;
+      let team_size = parseInt(document.getElementById('edit-team-size').value, 10) || 1;
+      if (mode === 'individual') team_size = 1;
+
       const payload = {
         title: document.getElementById('edit-title').value,
         difficulty: document.getElementById('edit-difficulty').value,
         time_limit: parseInt(document.getElementById('edit-time').value, 10) || 45,
+        mode: mode,
+        team_size: team_size,
         description: document.getElementById('edit-description').value,
         scenario: document.getElementById('edit-scenario').value,
         rules: document.getElementById('edit-rules').value,

@@ -19,15 +19,20 @@ def _get_challenge_by_slug(slug: str, db: Session) -> Challenge | None:
     return db.query(Challenge).filter(Challenge.folder_name == slug).first()
 
 
-
 @router.get("/challenges")
 def list_active_challenges(db: Session = Depends(get_db)):
     challenges = db.query(Challenge).filter(Challenge.is_active == True).order_by(Challenge.created_at.desc()).all()
     return [
         {
-            "slug": c.slug, "title": c.title, "difficulty": c.difficulty,
-            "category": c.category, "description": c.description,
+            "id": c.id,
+            "slug": c.slug,
+            "title": c.title,
+            "difficulty": c.difficulty,
+            "category": c.category,
+            "description": c.description,
             "time_limit": c.time_limit,
+            "mode": c.mode or "individual",
+            "team_size": c.team_size if c.team_size is not None else 1,
         }
         for c in challenges
     ]
@@ -58,6 +63,8 @@ def get_challenge_details(slug: str, db: Session = Depends(get_db)):
         "difficulty": challenge.difficulty, "category": challenge.category,
         "scenario": challenge.scenario, "rules": challenge.rules,
         "time_limit": challenge.time_limit, "readme": readme,
+        "mode": challenge.mode or "individual",
+        "team_size": challenge.team_size if challenge.team_size is not None else 1,
     }
 
 

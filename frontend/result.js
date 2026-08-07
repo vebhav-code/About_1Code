@@ -5,7 +5,9 @@
    overall feedback into the existing HTML.
 =========================================== */
 
-const API_BASE = "https://about-1code.onrender.com";
+const API_BASE = (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost")
+  ? "http://127.0.0.1:8000"
+  : "https://about-1code.onrender.com";
 
 document.addEventListener("DOMContentLoaded", async () => {
     // Support both ?id=N (session submit redirect) and legacy sessionStorage path
@@ -52,6 +54,39 @@ document.addEventListener("DOMContentLoaded", async () => {
    Render evaluation data into the HTML
 =========================================== */
 function renderResult(data) {
+    // --- Submitted By ---
+    const submittedBy = document.getElementById("submittedBy");
+    if (submittedBy) {
+        if (data.team_name) {
+            // Team submission — show team name + member avatar chips
+            const members = data.members || [];
+            const memberChips = members.map(m => {
+                const initials = (m.name || "?").substring(0, 2).toUpperCase();
+                return `<span style="
+                    display:inline-flex; align-items:center; gap:6px;
+                    background:rgba(91,141,239,0.12); border:1px solid rgba(91,141,239,0.25);
+                    border-radius:20px; padding:3px 12px 3px 4px; font-size:0.85rem;
+                ">
+                    <span style="
+                        width:22px; height:22px; border-radius:50%;
+                        background:rgba(91,141,239,0.3); display:inline-flex;
+                        align-items:center; justify-content:center;
+                        font-size:0.7rem; font-weight:600;
+                    ">${escapeHtml(initials)}</span>
+                    ${escapeHtml(m.name)}
+                </span>`;
+            }).join(" ");
+
+            submittedBy.innerHTML =
+                `👥 Team <strong>${escapeHtml(data.team_name)}</strong>` +
+                (memberChips ? `<div style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px; justify-content:center;">${memberChips}</div>` : "");
+        } else if (data.user_name) {
+            // Individual submission
+            submittedBy.innerHTML = `👤 Submitted by <strong>${escapeHtml(data.user_name)}</strong>`;
+        }
+        // else: no name info — leave empty (hidden by default since h2 is empty)
+    }
+
     // --- Overall score circle ---
     const scoreSpan = document.querySelector(".score-circle span");
     if (scoreSpan) scoreSpan.textContent = data.total_score;

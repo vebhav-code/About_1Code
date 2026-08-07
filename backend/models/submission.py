@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database.connection import Base
 
@@ -9,6 +10,7 @@ class Submission(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)
     challenge_id = Column(Integer, ForeignKey("challenges.id"), nullable=False)
     fixed_project_path = Column(String, nullable=True)
     debug_log_path = Column(String, nullable=True)

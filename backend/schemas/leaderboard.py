@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 
 class LeaderboardEntryResponse(BaseModel):
@@ -8,6 +8,8 @@ class LeaderboardEntryResponse(BaseModel):
     score: int
     challenge: str
     submission_time: str
+    team_name: Optional[str] = None
+    members: Optional[List[str]] = None
 
 
 class UserRankResponse(BaseModel):
