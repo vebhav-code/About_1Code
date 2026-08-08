@@ -92,3 +92,53 @@ class AdminChallengeResponse(BaseModel):
 class AdminChallengeDetailResponse(AdminChallengeResponse):
     starter_code: str = ""
     official_solution: str = ""
+
+
+class AdminChallengeDeleteResponse(BaseModel):
+    id: int
+    deleted: bool
+    archived: bool
+    reason: str
+
+
+class AdminUserSummary(BaseModel):
+    id: int
+    name: str
+    email: str
+    is_admin: bool
+    is_banned: bool
+    banned_reason: Optional[str] = None
+    banned_at: Optional[datetime] = None
+    created_at: datetime
+    total_attempted: int = 0
+    total_completed: int = 0
+
+
+class AdminUserDetailResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    bio: Optional[str] = ""
+    avatar_url: Optional[str] = None
+    joined_at: Optional[datetime] = None
+    is_admin: bool = False
+    is_banned: bool = False
+    banned_reason: Optional[str] = None
+    banned_at: Optional[datetime] = None
+    rank: Optional[int] = None
+    percentile: Optional[int] = None
+    average_score: int = 0
+    weighted_points: int = 0
+    total_attempted: int = 0
+    total_completed: int = 0
+    current_streak: int = 0
+    longest_streak: int = 0
+    history: list[dict] = []
+    badges: list[dict] = []
+    category_breakdown: list[dict] = []
+    difficulty_breakdown: dict = {}
+    visit_calendar: list[dict] = []
+
+
+class AdminBanRequest(BaseModel):
+    reason: Optional[str] = None

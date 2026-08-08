@@ -69,11 +69,17 @@ class SubmitRequest(BaseModel):
 # Authorization Helper
 # ---------------------------------------------------------------------------
 
-def _authorize_session_actor(session: ChallengeSession, user_id: Optional[int], db: Session) -> None:
+def _authorize_session_actor(
+    session: ChallengeSession,
+    user_id: Optional[int],
+    db: Session,
+    require_leader: bool = False
+) -> None:
     """
     Ensure the actor is authorized to interact with the session.
     If individual session: user_id can match or be unenforced for backward compatibility.
     If team session: actor_user_id MUST be provided and MUST be a member of the team.
+    If require_leader is True: actor_user_id MUST be the team leader.
     """
     if session.team_id is not None:
         if user_id is None:
@@ -91,6 +97,14 @@ def _authorize_session_actor(session: ChallengeSession, user_id: Optional[int], 
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not a member of this team.",
             )
+
+        if require_leader:
+            team = db.query(Team).filter(Team.id == session.team_id).first()
+            if not team or user_id != team.leader_user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only the team leader can submit this challenge for grading.",
+                )
     else:
         if user_id is not None and session.user_id is not None and user_id != session.user_id:
             raise HTTPException(
@@ -127,6 +141,24 @@ def start_session(body: StartRequest, db: Session = Depends(get_db)):
             detail="This challenge is team-only. Join or create a team to attempt it.",
         )
 
+    # 1. Check if user is in an active or forming team for this challenge
+    active_member = (
+        db.query(TeamMember)
+        .join(Team, TeamMember.team_id == Team.id)
+        .filter(
+            TeamMember.user_id == body.user_id,
+            Team.challenge_id == body.challenge_id,
+            Team.status.in_(["forming", "active"]),
+        )
+        .first()
+    )
+    if active_member:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You are already part of an active or forming team for this challenge.",
+        )
+
+    # 2. Check if user already submitted this challenge (individually or via team)
     existing_submission = (
         db.query(Submission)
         .outerjoin(TeamMember, TeamMember.team_id == Submission.team_id)
@@ -141,6 +173,27 @@ def start_session(body: StartRequest, db: Session = Depends(get_db)):
             status_code=status.HTTP_409_CONFLICT,
             detail="You've already submitted this challenge. Each challenge can only be attempted once.",
         )
+
+    # 3. Resume existing open/unsubmitted individual session if one exists
+    existing_open_session = (
+        db.query(ChallengeSession)
+        .filter(
+            ChallengeSession.challenge_id == body.challenge_id,
+            ChallengeSession.user_id == body.user_id,
+            ChallengeSession.submitted_at.is_(None),
+        )
+        .first()
+    )
+    if existing_open_session:
+        return {
+            "session_id": existing_open_session.id,
+            "starter_code": existing_open_session.current_code,
+            "challenge": {
+                "title": challenge.title,
+                "scenario": challenge.scenario,
+                "time_limit": challenge.time_limit,
+            },
+        }
 
     starter_code = load_starter_code(challenge)
 
@@ -248,6 +301,7 @@ async def send_message(
             message={
                 "type": "assistant_reply",
                 "message": reply_text,
+                "msg_id": assistant_msg.id,
             },
         )
 
@@ -321,7 +375,7 @@ async def submit_session(
         raise HTTPException(status_code=400, detail="Session already submitted")
 
     actor_id = body.actor_user_id if body else None
-    _authorize_session_actor(session, actor_id, db)
+    _authorize_session_actor(session, actor_id, db, require_leader=True)
 
     # If team session, check 2-member floor safety net
     team = None
@@ -438,5 +492,14 @@ async def submit_session(
     )
     db.add(evaluation)
     db.commit()
+
+    if team:
+        broadcast_to_team(
+            team_id=team.id,
+            message={
+                "type": "team_submitted",
+                "submission_id": submission.id,
+            },
+        )
 
     return {"submission_id": submission.id}

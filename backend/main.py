@@ -99,6 +99,8 @@ frontend_origin_regex = r"^https:\/\/(1code|1codeadmin)(-[a-z0-9]+)?-vebhav-shar
 print(f"CORS allowed origins: {frontend_origins}")
 print(f"CORS allowed origin regex: {frontend_origin_regex}")
 
+from fastapi.middleware.gzip import GZipMiddleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=frontend_origins,
@@ -108,13 +110,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Enable response compression for JSON/HTML responses >= 500 bytes
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+
+# Custom StaticFiles subclass to add Cache-Control headers (max-age=3600)
+class CachedStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
+
+
 studio_dir = Path(__file__).resolve().parent.parent / "studio"
 if studio_dir.exists():
-    app.mount("/studio", StaticFiles(directory=str(studio_dir), html=True), name="studio")
+    app.mount("/studio", CachedStaticFiles(directory=str(studio_dir), html=True), name="studio")
 
 uploads_dir = Path(__file__).resolve().parent / "uploads"
 uploads_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
+app.mount("/uploads", CachedStaticFiles(directory=str(uploads_dir)), name="uploads")
+
+
+# Note on Render Free-Tier Cold Starts:
+# Free-tier compute instances on Render spin down after 15 minutes of inactivity,
+# causing an initial 30-50s cold-start latency on the first request while the container boots.
+# Code-level caching cannot prevent cold starts. To keep the instance warm, set up an external
+# uptime ping service (e.g., UptimeRobot) targeting this lightweight /health endpoint every ~10 mins.
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
 
 app.include_router(auth_router)
 app.include_router(contest_router)

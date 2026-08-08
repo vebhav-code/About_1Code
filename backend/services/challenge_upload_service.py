@@ -9,6 +9,10 @@ from models.challenge import Challenge
 from schemas.admin import AdminChallengeCreate
 
 
+from models.submission import Submission
+from models.team import Team
+
+
 class ChallengeUploadService:
     ASSETS_ROOT = Path(__file__).resolve().parent.parent / "assets" / "challenges"
 
@@ -44,8 +48,11 @@ class ChallengeUploadService:
         self.db.refresh(challenge)
         return self._serialize(challenge)
 
-    def list_challenges(self) -> List[Dict[str, object]]:
-        challenges = self.db.query(Challenge).order_by(Challenge.created_at.desc()).all()
+    def list_challenges(self, include_archived: bool = False) -> List[Dict[str, object]]:
+        query = self.db.query(Challenge)
+        if not include_archived:
+            query = query.filter(Challenge.is_active == True)
+        challenges = query.order_by(Challenge.created_at.desc()).all()
         return [self._serialize(challenge) for challenge in challenges]
 
     def get_challenge(self, challenge_id: int) -> Optional[Dict[str, object]]:
@@ -99,10 +106,27 @@ class ChallengeUploadService:
         if challenge is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Challenge not found")
 
-        challenge.is_active = False
-        self.db.commit()
-        self.db.refresh(challenge)
-        return self._serialize(challenge)
+        has_submissions = self.db.query(Submission).filter(Submission.challenge_id == challenge_id).first() is not None
+        has_teams = self.db.query(Team).filter(Team.challenge_id == challenge_id).first() is not None
+
+        if not has_submissions and not has_teams:
+            self.db.delete(challenge)
+            self.db.commit()
+            return {
+                "id": challenge_id,
+                "deleted": True,
+                "archived": False,
+                "reason": "Challenge permanently deleted.",
+            }
+        else:
+            challenge.is_active = False
+            self.db.commit()
+            return {
+                "id": challenge_id,
+                "deleted": False,
+                "archived": True,
+                "reason": "Challenge has existing submissions and was archived instead of deleted to preserve leaderboard/profile history.",
+            }
 
     def _serialize(self, challenge: Challenge) -> Dict[str, object]:
         return {

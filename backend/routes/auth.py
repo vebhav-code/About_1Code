@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 import bcrypt
 
@@ -47,12 +47,25 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
     return user
 
 
+# SESSION MODEL TRADEOFF NOTE:
+# Authentication in 1Code is client-side via localStorage per session.js, without server-issued
+# JWT tokens. Banning an account blocks credential authentication immediately upon next login attempt.
+# Existing client-side sessions on already-open tabs will be prevented from authenticating new sessions
+# or re-logging in once their browser session resets.
+
+
 @router.post("/login", response_model=LoginOut)
 def login(payload: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == payload.email).first()
 
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid Credentials")
+
+    if getattr(user, "is_banned", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account has been suspended. Contact support if you believe this is a mistake.",
+        )
 
     try:
         record_visit(db, user.id)
@@ -68,6 +81,12 @@ def admin_login(payload: UserLogin, db: Session = Depends(get_db)):
 
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid Credentials")
+
+    if getattr(user, "is_banned", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account has been suspended. Contact support if you believe this is a mistake.",
+        )
 
     if not user.is_admin:
         raise HTTPException(status_code=403, detail="Access Denied: Admins Only")

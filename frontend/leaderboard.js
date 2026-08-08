@@ -1,8 +1,7 @@
 /* ===========================================
-   1Code — Leaderboard Page
+   1Code — Challenge-Scoped Leaderboard Page
    Fetches live rankings and stats from
-   the FastAPI backend and renders them into
-   the existing table structure.
+   the FastAPI backend for a specific challenge.
 =========================================== */
 
 const API_BASE = (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost")
@@ -10,13 +9,63 @@ const API_BASE = (window.location.hostname === "127.0.0.1" || window.location.ho
   : "https://about-1code.onrender.com";
 
 const MEDAL = ["🥇", "🥈", "🥉"];
+const params = new URLSearchParams(window.location.search);
+const challengeSlug = params.get("slug");
+const user = JSON.parse(localStorage.getItem("1code_user") || "null");
+const userId = user?.user_id || user?.id;
 
 let currentMode = "individual";
 
 document.addEventListener("DOMContentLoaded", async () => {
+    if (!challengeSlug) {
+        renderChallengePicker();
+        return;
+    }
     setupModeToggle();
     await Promise.all([loadLeaderboard(), loadStats()]);
 });
+
+async function renderChallengePicker() {
+    const container = document.querySelector(".leaderboard-section .contest-container");
+    if (!container) return;
+
+    const heroH1 = document.querySelector(".contest-hero h1");
+    if (heroH1) heroH1.textContent = "Leaderboards";
+    const heroP = document.querySelector(".contest-hero p");
+    if (heroP) heroP.textContent = "Select a challenge to view its top developers and rankings.";
+
+    container.innerHTML = `
+      <div class="glass-card" style="padding: 36px; text-align: center; max-width: 540px; margin: 20px auto;">
+        <h3 style="font-family: var(--font-display); font-size: 1.4rem; margin-bottom: 10px;">Select a Challenge</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 24px; font-size: 0.95rem;">Choose a challenge to view its per-challenge rankings and participant stats.</p>
+        <select id="challengePickerSelect" class="team-form-input" style="padding: 12px 16px; margin-bottom: 24px; width: 100%; box-sizing: border-box;">
+          <option value="">Loading challenges...</option>
+        </select>
+        <div>
+          <a href="dashboard.html" class="btn btn-ghost">← Back to Dashboard</a>
+        </div>
+      </div>
+    `;
+
+    try {
+        const res = await fetch(`${API_BASE}/challenges`);
+        if (!res.ok) throw new Error();
+        const challenges = await res.json();
+        const select = document.getElementById("challengePickerSelect");
+        if (select) {
+            select.innerHTML = `<option value="">-- Choose a Challenge --</option>` +
+              challenges.map(c => `<option value="${escapeHtml(c.slug)}">${escapeHtml(c.title)} (${c.difficulty || 'Medium'})</option>`).join("");
+            select.addEventListener("change", (e) => {
+                const selectedSlug = e.target.value;
+                if (selectedSlug) {
+                    window.location.href = `leaderboard.html?slug=${encodeURIComponent(selectedSlug)}`;
+                }
+            });
+        }
+    } catch {
+        container.innerHTML = `<p style="color: var(--danger); text-align: center;">Could not load challenges. Please check server status.</p>`;
+    }
+}
 
 function setupModeToggle() {
     const tabIndividual = document.getElementById("tabIndividual");
@@ -42,9 +91,11 @@ function setupModeToggle() {
 }
 
 /* ===========================================
-   Load Top-100 Rankings
+   Load Challenge-Scoped Rankings
 =========================================== */
 async function loadLeaderboard() {
+    if (!challengeSlug) return;
+
     const tbody = document.querySelector("table tbody");
     if (!tbody) return;
 
@@ -63,20 +114,31 @@ async function loadLeaderboard() {
     }
 
     try {
-        const res = await fetch(`${API_BASE}/api/leaderboard?mode=${currentMode}`);
+        const url = `${API_BASE}/api/leaderboard?challenge_slug=${encodeURIComponent(challengeSlug)}&mode=${currentMode}${userId ? `&user_id=${userId}` : ''}`;
+        const res = await fetch(url);
 
         if (!res.ok) {
-            throw new Error(`Server returned ${res.status}`);
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || `Server returned ${res.status}`);
         }
 
-        const entries = await res.json();
+        const data = await res.json();
+        const entries = data.entries || [];
+        const myRank = data.my_rank;
+
+        if (data.challenge_title) {
+            const heroH1 = document.querySelector(".contest-hero h1");
+            if (heroH1) heroH1.textContent = `${data.challenge_title} Leaderboard`;
+        }
+
+        renderUserRankBanner(myRank, data.challenge_slug || challengeSlug);
 
         if (!entries.length) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="5" style="text-align:center;padding:50px;
                         color:var(--text-secondary);">
-                        No ${currentMode === "team" ? "team" : ""} submissions yet — be the first!
+                        No ${currentMode === "team" ? "team" : ""} submissions yet for this challenge — be the first!
                     </td>
                 </tr>`;
             return;
@@ -122,9 +184,55 @@ async function loadLeaderboard() {
             <tr>
                 <td colspan="5" style="text-align:center;padding:40px;
                     color:#f87171;">
-                    Failed to load leaderboard. Is the backend running?
+                    ${escapeHtml(err.message || "Failed to load leaderboard. Is the backend running?")}
                 </td>
             </tr>`;
+    }
+}
+
+function renderUserRankBanner(myRank, slug) {
+    let banner = document.getElementById("userRankBanner");
+    if (!banner) {
+        banner = document.createElement("div");
+        banner.id = "userRankBanner";
+        const container = document.querySelector(".leaderboard-section .contest-container");
+        const card = container?.querySelector(".glass-card.leaderboard-card");
+        if (container && card) {
+            container.insertBefore(banner, card);
+        }
+    }
+
+    if (!myRank) {
+        banner.style.display = "none";
+        return;
+    }
+
+    banner.style.display = "flex";
+    banner.className = "glass-card";
+    banner.style.cssText = "padding: 16px 24px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;";
+
+    if (myRank.participated) {
+        banner.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.4rem;">🎯</span>
+                <div>
+                    <div style="font-weight: 600; font-size: 0.95rem; color: #a5f3fc;">Your Ranking (${currentMode === 'team' ? 'Team' : 'Individual'})</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Rank: <strong>#${myRank.rank}</strong> &nbsp;•&nbsp; Score: <strong>${myRank.score} / 100</strong></div>
+                </div>
+            </div>
+            <a href="contest.html?slug=${encodeURIComponent(slug)}" class="btn btn-ghost" style="padding: 6px 14px; font-size: 0.85rem;">View Attempt →</a>
+        `;
+    } else {
+        banner.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.4rem;">ℹ️</span>
+                <div>
+                    <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary);">You haven't attempted this challenge yet</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Complete this challenge to earn your place on the leaderboard.</div>
+                </div>
+            </div>
+            <a href="contest.html?slug=${encodeURIComponent(slug)}" class="btn btn-primary" style="padding: 8px 18px; font-size: 0.85rem;">Attempt Challenge →</a>
+        `;
     }
 }
 
@@ -132,24 +240,31 @@ async function loadLeaderboard() {
    Load Challenge Stats Banner
 =========================================== */
 async function loadStats() {
+    if (!challengeSlug) return;
     try {
-        const res = await fetch(`${API_BASE}/api/leaderboard/stats`);
+        const res = await fetch(`${API_BASE}/api/leaderboard/stats?challenge_slug=${encodeURIComponent(challengeSlug)}`);
         if (!res.ok) return;
 
         const statsList = await res.json();
-        if (!statsList.length) return;
+        if (!statsList || !statsList.length) return;
 
-        const stats = statsList[0]; // first (or only) challenge
+        const stats = statsList[0];
 
-        // Only inject the stats banner if it doesn't already exist
-        if (document.getElementById("statsBanner")) return;
+        let banner = document.getElementById("statsBanner");
+        if (!banner) {
+            banner = document.createElement("div");
+            banner.id = "statsBanner";
+            banner.className = "glass-card";
+            banner.style.cssText =
+                "display:flex;flex-wrap:wrap;gap:16px;justify-content:center;" +
+                "padding:20px 24px;margin-bottom:20px;text-align:center;";
 
-        const banner = document.createElement("div");
-        banner.id = "statsBanner";
-        banner.className = "glass-card";
-        banner.style.cssText =
-            "display:flex;flex-wrap:wrap;gap:16px;justify-content:center;" +
-            "padding:24px 30px;margin-bottom:30px;text-align:center;";
+            const container = document.querySelector(
+                ".leaderboard-section .contest-container"
+            );
+            const card = container?.querySelector(".glass-card.leaderboard-card");
+            if (container && card) container.insertBefore(banner, card);
+        }
 
         const items = [
             { label: "Challenge",        value: stats.challenge_name },
@@ -162,29 +277,21 @@ async function loadStats() {
         banner.innerHTML = items
             .map(
                 (item) => `
-                <div style="min-width:130px;">
-                    <div style="font-size:.78rem;text-transform:uppercase;
+                <div style="min-width:120px;">
+                    <div style="font-size:.75rem;text-transform:uppercase;
                                 letter-spacing:.07em;color:var(--text-secondary);
-                                margin-bottom:6px;">
+                                margin-bottom:4px;">
                         ${escapeHtml(String(item.label))}
                     </div>
-                    <div style="font-size:1.25rem;font-weight:700;
+                    <div style="font-size:1.15rem;font-weight:700;
                                 color:var(--text-primary,#fff);">
                         ${escapeHtml(String(item.value))}
                     </div>
                 </div>`
             )
             .join("");
-
-        const container = document.querySelector(
-            ".leaderboard-section .contest-container"
-        );
-        if (container) {
-            const card = container.querySelector(".glass-card.leaderboard-card");
-            if (card) container.insertBefore(banner, card);
-        }
     } catch {
-        // Stats are optional — fail silently
+        // fail silently
     }
 }
 
@@ -192,7 +299,7 @@ async function loadStats() {
    Helpers
 =========================================== */
 function escapeHtml(str) {
-    return String(str)
+    return String(str || "")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");

@@ -9,9 +9,9 @@ class Submission(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)
-    challenge_id = Column(Integer, ForeignKey("challenges.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True, index=True)
+    challenge_id = Column(Integer, ForeignKey("challenges.id"), nullable=False, index=True)
     fixed_project_path = Column(String, nullable=True)
     debug_log_path = Column(String, nullable=True)
     late = Column(Boolean, nullable=False, default=False)

@@ -20,6 +20,8 @@ MIGRATION_FILES = [
     "migration_teams.sql",
     "migration_team_sessions.sql",
     "migration_profile_activity.sql",
+    "migration_perf_indexes.sql",
+    "migration_user_ban.sql",
 ]
 
 # Arbitrary constant, just needs to be unique to this app so it doesn't
@@ -46,6 +48,9 @@ def run_migrations() -> None:
                     if statement:
                         conn.execute(text(statement))
             conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             conn.execute(text("SELECT pg_advisory_unlock(:lock_id)"), {"lock_id": MIGRATION_LOCK_ID})
 

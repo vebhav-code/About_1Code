@@ -15,7 +15,7 @@ def setup_module():
     db = SessionLocal()
     from sqlalchemy import text
 
-    slugs = ["test-default-indiv", "test-team-challenge", "test-team-hp-slug", "test-team-rej-slug", "test-team-ws-slug"]
+    slugs = ["test-default-indiv", "test-team-challenge", "test-team-hp-slug", "test-team-rej-slug", "test-team-ws-slug", "test-team-sub-slug"]
     for slug in slugs:
         ch = db.query(Challenge).filter(Challenge.slug == slug).first()
         if ch:
@@ -453,4 +453,116 @@ def test_team_websocket_connection():
             mute_msg = ws2.receive_json()
             assert mute_msg["type"] == "mute_state"
             assert mute_msg["is_muted"] is False
+
+
+def test_leader_only_submission_enforcement(monkeypatch):
+    # Mock evaluate_submission_with_gemini to avoid calling real Gemini API in test
+    async def mock_eval(*args, **kwargs):
+        return {
+            "hypothesis": 18,
+            "prompt_quality": 22,
+            "ai_collaboration": 18,
+            "code_correctness": 24,
+            "problem_solving": 9,
+            "total_score": 91,
+            "strengths": ["Good fix"],
+            "improvements": ["More comments"],
+            "overall_feedback": "Great teamwork!"
+        }
+    monkeypatch.setattr("routes.session.evaluate_submission_with_gemini", mock_eval)
+
+    db = SessionLocal()
+    from models.user import User
+    from models.submission import Submission
+
+    leader = db.query(User).filter(User.email == "leader_sub@1code.com").first()
+    if not leader:
+        leader = User(name="Leader Sub", email="leader_sub@1code.com", password_hash="hash")
+        db.add(leader)
+        db.commit()
+
+    member = db.query(User).filter(User.email == "member_sub@1code.com").first()
+    if not member:
+        member = User(name="Member Sub", email="member_sub@1code.com", password_hash="hash")
+        db.add(member)
+        db.commit()
+
+    leader_id = leader.id
+    member_id = member.id
+
+    ch = db.query(Challenge).filter(Challenge.slug == "test-team-sub-slug").first()
+    if not ch:
+        ch = Challenge(
+            slug="test-team-sub-slug",
+            title="Sub Challenge",
+            description="Desc",
+            scenario="Scenario",
+            rules="Rules",
+            time_limit=45,
+            category="Testing",
+            starter_code="def pass(): pass",
+            official_solution="def pass(): pass",
+            mode="team",
+            team_size=4,
+            is_active=True
+        )
+        db.add(ch)
+        db.commit()
+        db.refresh(ch)
+    ch_id = ch.id
+    db.close()
+
+    # Create team (leader_id is leader)
+    create_res = client.post("/api/teams", json={
+        "challenge_id": ch_id,
+        "user_id": leader_id,
+        "team_name": "Submit Test Team"
+    })
+    assert create_res.status_code == 201
+    team_id = create_res.json()["id"]
+
+    # Join member
+    j_res = client.post("/api/teams/join", json={"user_id": member_id, "team_id": team_id})
+    assert j_res.status_code == 200
+
+    # Start team session
+    s_res = client.post(f"/api/teams/{team_id}/start", json={"user_id": leader_id})
+    assert s_res.status_code == 200
+    session_id = s_res.json()["session_id"]
+
+    # 1. Non-leader CAN save code
+    save_res = client.post(f"/api/sessions/{session_id}/save-code", json={
+        "code": "def fix(): return True",
+        "actor_user_id": member_id
+    })
+    assert save_res.status_code == 200
+
+    # 2. Non-leader submission attempt -> Rejected with 403
+    sub_non_leader = client.post(f"/api/sessions/{session_id}/submit", json={
+        "actor_user_id": member_id
+    })
+    assert sub_non_leader.status_code == 403
+    assert "Only the team leader can submit this challenge for grading" in sub_non_leader.json()["detail"]
+
+    # Verify no Submission row created yet
+    db_verify = SessionLocal()
+    sub_count = db_verify.query(Submission).filter(Submission.team_id == team_id).count()
+    assert sub_count == 0
+    db_verify.close()
+
+    # 3. Leader submission attempt -> Succeeds (200)
+    sub_leader = client.post(f"/api/sessions/{session_id}/submit", json={
+        "actor_user_id": leader_id
+    })
+    assert sub_leader.status_code == 200
+    sub_data = sub_leader.json()
+    assert "submission_id" in sub_data
+
+    # Verify Submission created with team_id set and user_id None
+    db_verify2 = SessionLocal()
+    created_sub = db_verify2.query(Submission).filter(Submission.id == sub_data["submission_id"]).first()
+    assert created_sub is not None
+    assert created_sub.team_id == team_id
+    assert created_sub.user_id is None
+    db_verify2.close()
 

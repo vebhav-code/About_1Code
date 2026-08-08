@@ -167,11 +167,13 @@ def create_team(body: TeamCreate, db: Session = Depends(get_db)):
 def list_open_teams(
     slug: str,
     user_id: Optional[int] = None,
+    q: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     """
     List open teams ('forming' status and member_count < team_size) for a challenge slug.
     When user_id is provided, teams where that user is already a member are excluded.
+    When q is provided, filters teams by case-insensitive partial match on team name.
     """
     challenge = db.query(Challenge).filter(Challenge.slug == slug).first()
     if not challenge:
@@ -185,6 +187,10 @@ def list_open_teams(
             .subquery()
         )
         team_query = team_query.filter(~Team.id.in_(member_team_ids_subquery))
+
+    if q and q.strip():
+        search_term = f"%{q.strip()}%"
+        team_query = team_query.filter(Team.name.ilike(search_term))
 
     teams = team_query.all()
 

@@ -12,6 +12,21 @@ class LeaderboardEntryResponse(BaseModel):
     members: Optional[List[str]] = None
 
 
+class UserRankSummary(BaseModel):
+    participated: bool
+    rank: Optional[int] = None
+    score: Optional[int] = None
+    submission_id: Optional[int] = None
+
+
+class LeaderboardResponse(BaseModel):
+    challenge_slug: str
+    challenge_title: str
+    mode: str
+    entries: List[LeaderboardEntryResponse]
+    my_rank: Optional[UserRankSummary] = None
+
+
 class UserRankResponse(BaseModel):
     current_rank: int
     current_score: int

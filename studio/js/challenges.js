@@ -105,13 +105,25 @@ function openDeleteModal(id, title) {
 
   document.getElementById('modal-confirm-btn').addEventListener('click', async () => {
     const btn = document.getElementById('modal-confirm-btn');
-    btn.textContent = 'Deleting…';
+    btn.textContent = 'Processing…';
     btn.disabled = true;
     try {
-      await deleteAdminChallenge(id);
-      window.showToast('Challenge deleted successfully.', 'success');
+      const res = await deleteAdminChallenge(id);
+      if (res.deleted) {
+        window.showToast('Challenge permanently deleted.', 'success');
+      } else if (res.archived) {
+        window.showToast('Challenge archived (has existing submissions).', 'info');
+      } else {
+        window.showToast('Challenge deleted successfully.', 'success');
+      }
       close();
-      reload();
+      // Optimistic UI removal from current view
+      _allChallenges = _allChallenges.filter(c => c.id !== id);
+      const row = document.querySelector(`tr[data-id="${id}"]`);
+      if (row) row.remove();
+      if (!_allChallenges.length) {
+        renderChallenges([]);
+      }
     } catch (err) {
       window.showToast(err.message, 'error');
       btn.textContent = 'Delete Challenge';
@@ -120,13 +132,13 @@ function openDeleteModal(id, title) {
   });
 }
 
-async function reload() {
-  _allChallenges = await getAdminChallenges().catch(() => []);
+async function reload(includeArchived = false) {
+  _allChallenges = await getAdminChallenges(includeArchived).catch(() => []);
   renderChallenges(_allChallenges);
 }
 
 export async function initChallenges() {
-  _allChallenges = await getAdminChallenges().catch(() => []);
+  _allChallenges = await getAdminChallenges(false).catch(() => []);
   renderChallenges(_allChallenges);
 
   document.getElementById('new-challenge')?.addEventListener('click', () => {
@@ -150,12 +162,18 @@ export async function initChallenges() {
   // Status filter
   const statusFilter = document.getElementById('challenge-filter');
   if (statusFilter) {
-    statusFilter.addEventListener('change', () => {
+    statusFilter.addEventListener('change', async () => {
       const val = statusFilter.value;
-      const filtered = val === 'all' ? _allChallenges
-        : val === 'active'   ? _allChallenges.filter(c => c.is_active)
-        : _allChallenges.filter(c => !c.is_active);
-      renderChallenges(filtered);
+      if (val === 'archived') {
+        _allChallenges = await getAdminChallenges(true).catch(() => []);
+        renderChallenges(_allChallenges);
+      } else if (val === 'active') {
+        _allChallenges = await getAdminChallenges(false).catch(() => []);
+        renderChallenges(_allChallenges.filter(c => c.is_active));
+      } else {
+        _allChallenges = await getAdminChallenges(false).catch(() => []);
+        renderChallenges(_allChallenges);
+      }
     });
   }
 }

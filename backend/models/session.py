@@ -9,9 +9,9 @@ class ChallengeSession(Base):
     __tablename__ = "challenge_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    challenge_id = Column(Integer, ForeignKey("challenges.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)
+    challenge_id = Column(Integer, ForeignKey("challenges.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True, index=True)
     name = Column(String, nullable=False)
     hypothesis = Column(Text, nullable=True)
     current_code = Column(Text, nullable=False, default="")

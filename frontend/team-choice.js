@@ -77,6 +77,17 @@ export function openTeamChoiceModal(challenge) {
       <div id="tabContentJoin" class="team-tab-content" style="display:none;">
         <div id="joinAlert" class="team-alert team-alert-error"></div>
 
+        <div style="margin-bottom: 10px;">
+          <input 
+            type="text" 
+            id="teamSearchInput" 
+            class="team-form-input" 
+            placeholder="Search team name..." 
+            autocomplete="off"
+            style="padding: 9px 12px; font-size: 0.85rem;"
+          />
+        </div>
+
         <div style="margin-bottom:8px; font-size:0.8rem; color:var(--text-secondary,#9BA3C0); display:flex; justify-content:space-between; align-items:center;">
           <span>Open Teams</span>
           <span id="teamsPollingStatus" style="font-size:0.75rem; color:var(--text-muted,#656E8C);">● Live</span>
@@ -109,12 +120,37 @@ export function openTeamChoiceModal(challenge) {
 
   document.body.appendChild(backdrop);
 
+  // Page Visibility API: Pause polling when tab is backgrounded/hidden to save network resources
+  const handleVisibilityChange = () => {
+    if (document.hidden) {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    } else {
+      if (tabBtnJoin.classList.contains("active") && !pollInterval) {
+        const q = document.getElementById("teamSearchInput")?.value?.trim() || "";
+        loadOpenTeams(challenge.slug, userId, q);
+        pollInterval = setInterval(runPoll, 5000);
+      }
+    }
+  };
+
+  const runPoll = () => {
+    if (document.hidden) return;
+    const q = document.getElementById("teamSearchInput")?.value?.trim() || "";
+    loadOpenTeams(challenge.slug, userId, q);
+  };
+
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+
   // Close handlers
   const closeModal = () => {
     if (pollInterval) {
       clearInterval(pollInterval);
       pollInterval = null;
     }
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
     backdrop.remove();
   };
 
@@ -129,12 +165,25 @@ export function openTeamChoiceModal(challenge) {
   const tabContentCreate = document.getElementById("tabContentCreate");
   const tabContentJoin = document.getElementById("tabContentJoin");
 
+  let searchDebounceTimeout = null;
+  const searchInput = document.getElementById("teamSearchInput");
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
+      searchDebounceTimeout = setTimeout(() => {
+        const query = searchInput.value.trim();
+        loadOpenTeams(challenge.slug, userId, query);
+      }, 300);
+    });
+  }
+
   const switchTab = (tab) => {
     if (tab === "create") {
       tabBtnCreate.classList.add("active");
       tabBtnJoin.classList.remove("active");
       tabContentCreate.style.display = "block";
       tabContentJoin.style.display = "none";
+      if (searchInput) searchInput.value = "";
       if (pollInterval) {
         clearInterval(pollInterval);
         pollInterval = null;
@@ -144,9 +193,12 @@ export function openTeamChoiceModal(challenge) {
       tabBtnCreate.classList.remove("active");
       tabContentJoin.style.display = "block";
       tabContentCreate.style.display = "none";
-      loadOpenTeams(challenge.slug, userId);
+      const currentQuery = searchInput?.value?.trim() || "";
+      loadOpenTeams(challenge.slug, userId, currentQuery);
       if (!pollInterval) {
-        pollInterval = setInterval(() => loadOpenTeams(challenge.slug, userId), 3500);
+        // Polling Tradeoff: Lengthened from 3.5s to 5.0s (5000ms). Open team discovery is not sub-second
+        // time-critical; 5.0s reduces background backend request load by ~30% with negligible UX impact.
+        pollInterval = setInterval(runPoll, 5000);
       }
     }
   };
@@ -236,13 +288,18 @@ export function openTeamChoiceModal(challenge) {
 }
 
 // Fetch and render open teams
-async function loadOpenTeams(slug, userId) {
+async function loadOpenTeams(slug, userId, query = "") {
   const container = document.getElementById("openTeamsList");
   const joinAlert = document.getElementById("joinAlert");
   if (!container) return;
 
   try {
-    const url = `${API_BASE}/api/challenge/${encodeURIComponent(slug)}/teams${userId ? `?user_id=${encodeURIComponent(userId)}` : ''}`;
+    const queryParams = [];
+    if (userId) queryParams.push(`user_id=${encodeURIComponent(userId)}`);
+    if (query) queryParams.push(`q=${encodeURIComponent(query)}`);
+    const queryString = queryParams.length ? `?${queryParams.join("&")}` : "";
+
+    const url = `${API_BASE}/api/challenge/${encodeURIComponent(slug)}/teams${queryString}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error("Failed to load open teams");
     const teams = await res.json();
@@ -250,7 +307,7 @@ async function loadOpenTeams(slug, userId) {
     if (!teams.length) {
       container.innerHTML = `
         <div style="color:var(--text-muted); font-size:0.85rem; padding:16px; text-align:center;">
-          No open teams yet. Create one or ask your team leader for an invite code!
+          ${query ? 'No teams matching "' + escapeHtml(query) + '".' : 'No open teams yet. Create one or ask your team leader for an invite code!'}
         </div>`;
       return;
     }

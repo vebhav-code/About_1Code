@@ -16,12 +16,12 @@ class Challenge(Base):
 
     difficulty = Column(String)
 
-    folder_name = Column(String)
+    folder_name = Column(String, index=True)
     category = Column(String)
     starter_code = Column(Text)
     official_solution = Column(Text)
 
-    is_active = Column(Boolean, default=True)
+    is_active = Column(Boolean, default=True, index=True)
     description = Column(String)
     scenario = Column(String)
     rules = Column(String)

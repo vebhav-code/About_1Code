@@ -87,6 +87,11 @@ document.addEventListener("DOMContentLoaded", () => {
     sessionStorage.setItem('challenge_context', JSON.stringify({ slug: CHALLENGE_SLUG }));
     // ────────────────────────────────────────────────────────────────────────
 
+    const lbLink = document.querySelector('nav.nav-links a[href="leaderboard.html"]');
+    if (lbLink && CHALLENGE_SLUG) {
+        lbLink.href = `leaderboard.html?slug=${encodeURIComponent(CHALLENGE_SLUG)}`;
+    }
+
     sessionId = sessionStorage.getItem(ssKey('session_id')) || null;
 
     initializeChallenge();
@@ -283,6 +288,7 @@ function revealWorkspace(starterCode, challengeData) {
     initializeSubmitBtn();
 
     if (TEAM_ID) {
+        document.body.classList.add("team-mode");
         document.getElementById("teamPresenceBar").style.display = "flex";
         setupTeamWorkspace();
     }
@@ -504,6 +510,8 @@ function appendChatBubble(role, text, userName = null) {
     if (userName && (bubbleRole === "user" || bubbleRole === "teammate")) {
         const icon = bubbleRole === "teammate" ? "👥" : "👤";
         html = `<div class="chat-user-name"><span>${icon}</span> ${escapeHtml(userName)}</div>` + html;
+    } else if (role === "assistant") {
+        html = `<div class="chat-assistant-name"><span>✨</span> AI Assistant (Gemini)</div>` + html;
     }
 
     bubble.innerHTML = html;
@@ -520,7 +528,7 @@ function setTypingIndicator(on) {
         const indicator = document.createElement("div");
         indicator.id = "typingIndicator";
         indicator.className = "chat-bubble assistant typing";
-        indicator.innerHTML = '<span></span><span></span><span></span>';
+        indicator.innerHTML = '<div class="chat-assistant-name"><span>✨</span> AI Assistant (Gemini)</div><div class="typing-dots"><span></span><span></span><span></span></div>';
         document.getElementById("chatMessages")?.appendChild(indicator);
         document.getElementById("chatMessages").scrollTop = 99999;
     } else if (!on && existing) {
@@ -732,7 +740,15 @@ function initializeSubmitBtn() {
     const btn = document.getElementById("submitBtn");
     if (!btn) return;
 
+    updateSubmitButtonForTeamRole();
+
     btn.addEventListener("click", async () => {
+        const currentUserId = currentUser?.user_id || currentUser?.id;
+        if (TEAM_ID && teamLeaderUserId && currentUserId !== teamLeaderUserId) {
+            alert(`Only ${teamLeaderName} (Team Leader) can submit this challenge for grading.`);
+            return;
+        }
+
         if (isSubmitted) return;
         if (!sessionId) { alert("No active session. Please start the challenge first."); return; }
 
@@ -749,7 +765,7 @@ function initializeSubmitBtn() {
 
         try {
             const payload = {};
-            if (TEAM_ID) payload.actor_user_id = currentUser.user_id;
+            if (TEAM_ID) payload.actor_user_id = currentUserId;
             const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/submit`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -780,8 +796,12 @@ function initializeSubmitBtn() {
         } catch (err) {
             alert("Could not reach the server. Is the backend running?");
         } finally {
-            btn.disabled  = false;
-            btn.textContent = "Submit for Grading";
+            if (TEAM_ID && teamLeaderUserId && (currentUser?.user_id || currentUser?.id) !== teamLeaderUserId) {
+                updateSubmitButtonForTeamRole();
+            } else {
+                btn.disabled  = false;
+                btn.textContent = "Submit for Grading";
+            }
         }
     });
 }
@@ -903,15 +923,35 @@ function setupTeamWorkspace() {
     startChatPolling();
 }
 
+let teamLeaderUserId = null;
+let teamLeaderName = "Team Leader";
+
+function updateSubmitButtonForTeamRole() {
+    const btn = document.getElementById("submitBtn");
+    if (!btn || !TEAM_ID) return;
+
+    const currentUserId = currentUser?.user_id || currentUser?.id;
+    if (teamLeaderUserId && currentUserId !== teamLeaderUserId) {
+        btn.disabled = true;
+        btn.title = `Only ${teamLeaderName} (Team Leader) can submit this challenge for grading.`;
+        btn.innerHTML = `🔒 Only ${escapeHtml(teamLeaderName)} Can Submit`;
+    }
+}
+
 async function fetchTeamMembers() {
     try {
         const res = await fetch(`${API_BASE}/api/teams/${TEAM_ID}`);
         if (res.ok) {
             const data = await res.json();
+            teamLeaderUserId = data.leader_user_id || (data.members && data.members[0] ? data.members[0].user_id : null);
             data.members.forEach(m => {
                 teamMembers[m.user_id] = { ...m, isMuted: true, isOnline: true };
+                if (m.user_id === teamLeaderUserId) {
+                    teamLeaderName = m.name;
+                }
             });
             renderPresenceBar();
+            updateSubmitButtonForTeamRole();
         }
     } catch (e) {
         console.error("Failed to fetch team members");
@@ -963,8 +1003,29 @@ function handleTeamWsMessage(msg) {
             break;
 
         case "assistant_reply":
-            // TODO: handle this when backend starts broadcasting Gemini replies
-            // over WS. Until then, polling handles it (see pollChatHistory).
+            setTypingIndicator(false);
+            if (msg.msg_id && msg.msg_id <= lastKnownChatMsgId) {
+                break;
+            }
+            if (msg.msg_id) {
+                lastKnownChatMsgId = Math.max(lastKnownChatMsgId, msg.msg_id);
+            }
+            appendChatBubble("assistant", msg.message);
+            break;
+
+        case "team_submitted":
+            setTypingIndicator(false);
+            sessionStorage.removeItem(ssKey('session_id'));
+            sessionStorage.removeItem(ssKey('team_id'));
+            sessionStorage.removeItem(ssKey('code'));
+            sessionStorage.removeItem(ssKey('timer'));
+            if (timerInterval)       clearInterval(timerInterval);
+            if (saveInterval)        clearInterval(saveInterval);
+            if (chatPollingInterval) clearInterval(chatPollingInterval);
+            if (teamWs && teamWs.readyState === WebSocket.OPEN) teamWs.close();
+            if (msg.submission_id) {
+                window.location.href = `result.html?id=${msg.submission_id}`;
+            }
             break;
 
         case "code_sync":

@@ -11,6 +11,9 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
+    is_banned = Column(Boolean, default=False, nullable=False)
+    banned_reason = Column(Text, nullable=True)
+    banned_at = Column(DateTime(timezone=True), nullable=True)
     avatar_url = Column(String(512), default="", nullable=True)
     bio = Column(Text, default="", nullable=True)
     github_url = Column(String(255), default="", nullable=True)
@@ -27,6 +30,9 @@ class User(Base):
             "name": self.name,
             "email": self.email,
             "is_admin": self.is_admin,
+            "is_banned": self.is_banned,
+            "banned_reason": self.banned_reason,
+            "banned_at": self.banned_at.isoformat() if self.banned_at else None,
             "bio": self.bio or "",
             "github_url": self.github_url or "",
             "linkedin_url": self.linkedin_url or "",

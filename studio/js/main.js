@@ -5,6 +5,7 @@ import { initChallengeDetails } from './challenge-details.js';
 import { initSubmissions }     from './submissions.js';
 import { initAnalytics }       from './analytics.js';
 import { initLeaderboard }     from './leaderboard.js';
+import { initUsers }           from './users.js';
 
 // ─── Authentication Guard ───────────────────────────
 const adminKey = localStorage.getItem('1code_admin_key');
@@ -32,6 +33,7 @@ const ROUTES = {
   dashboard:        { title: 'Dashboard',       breadcrumb: 'Overview',     init: initDashboard,       fragment: 'pages/dashboard.html' },
   'upload-challenge':{ title: 'Upload Challenge', breadcrumb: 'Upload',      init: initUpload,          fragment: 'pages/upload-challenge.html' },
   challenges:       { title: 'Challenges',      breadcrumb: 'Manage',       init: initChallenges,      fragment: 'pages/challenges.html' },
+  users:            { title: 'User Management', breadcrumb: 'Users',        init: initUsers,           fragment: 'pages/users.html' },
   submissions:      { title: 'Submissions',     breadcrumb: 'Review',       init: initSubmissions,     fragment: 'pages/submissions.html' },
   analytics:        { title: 'Analytics',       breadcrumb: 'Insights',     init: initAnalytics,       fragment: 'pages/analytics.html' },
   leaderboard:      { title: 'Leaderboard',     breadcrumb: 'Rankings',     init: initLeaderboard,     fragment: 'pages/leaderboard.html' },

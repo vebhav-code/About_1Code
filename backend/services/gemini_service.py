@@ -8,8 +8,14 @@ import os
 import json
 import zipfile
 import shutil
+import asyncio
+import logging
+import time
+import re
 from pathlib import Path
 from fastapi import HTTPException, status
+
+logger = logging.getLogger(__name__)
 
 from config import GEMINI_API_KEY, GEMINI_MODEL
 
@@ -52,9 +58,6 @@ def _parse_json_response(text: str) -> dict:
     return json.loads(text)
 
 
-import time
-import re
-
 def _call_gemini(client, prompt: str, response_mime_type: str = "application/json") -> str:
     """Call Gemini using whichever SDK is installed, with a single retry for 429 errors."""
     for attempt in range(2):
@@ -86,6 +89,10 @@ def _call_gemini(client, prompt: str, response_mime_type: str = "application/jso
                         delay = float(retry_match.group(1))
                     except ValueError:
                         pass
+                # NOTE: time.sleep(delay) is safe here because _call_gemini() is called inside a
+                # worker thread via asyncio.to_thread(). It only blocks that worker thread,
+                # leaving the asyncio event loop completely free to handle other requests and WebSocket messages.
+                logger.warning(f"Gemini API returned 429 rate limit. Retrying after sleeping {delay}s in worker thread.")
                 time.sleep(delay)
                 continue
             if is_429:
@@ -204,7 +211,12 @@ Evaluate the user's submission and return ONLY a JSON object — no markdown, no
 """
 
     try:
-        text = _call_gemini(client, prompt)
+        start_time = time.perf_counter()
+        logger.info(f"Starting Gemini evaluation request (prompt length: {len(prompt)})...")
+        text = await asyncio.to_thread(_call_gemini, client, prompt)
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        logger.info(f"Gemini evaluation call completed in {duration_ms:.2f} ms")
+
         result = _parse_json_response(text)
 
     except json.JSONDecodeError as je:
@@ -270,7 +282,11 @@ to find and understand the issue themselves. Keep your response concise and conv
 Plain text only, no markdown formatting."""
 
     try:
-        reply = _call_gemini(client, prompt, response_mime_type="text/plain")
+        start_time = time.perf_counter()
+        logger.info(f"Starting Gemini chat request (message length: {len(message)})...")
+        reply = await asyncio.to_thread(_call_gemini, client, prompt, response_mime_type="text/plain")
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        logger.info(f"Gemini chat call completed in {duration_ms:.2f} ms")
         return reply
     except HTTPException:
         raise

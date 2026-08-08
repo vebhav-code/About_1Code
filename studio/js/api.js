@@ -28,7 +28,8 @@ async function apiFetch(path, options = {}) {
   return res.json();
 }
 
-export const getAdminChallenges = () => apiFetch('/api/admin/challenges');
+export const getAdminChallenges = (includeArchived = false) =>
+  apiFetch(`/api/admin/challenges${includeArchived ? '?include_archived=true' : ''}`);
 export const getAdminChallenge = (id) => apiFetch(`/api/admin/challenges/${id}`);
 export const getAdminChallengeById = getAdminChallenge;
 
@@ -48,6 +49,22 @@ export const updateAdminChallenge = (id, payload) =>
 
 export const deleteAdminChallenge = (id) =>
   apiFetch(`/api/admin/challenges/${id}`, { method: 'DELETE' });
+
+export const getAdminUsers = (query = '') =>
+  apiFetch(`/api/admin/users${query ? `?q=${encodeURIComponent(query)}` : ''}`);
+
+export const getAdminUser = (id) =>
+  apiFetch(`/api/admin/users/${id}`);
+
+export const banAdminUser = (id, reason = '') =>
+  apiFetch(`/api/admin/users/${id}/ban`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason }),
+  });
+
+export const unbanAdminUser = (id) =>
+  apiFetch(`/api/admin/users/${id}/unban`, { method: 'POST' });
 
 export const getSubmissions = () => apiFetch('/api/submissions');
 export const getSubmissionDetail = (id) => apiFetch(`/api/submissions/${id}`);

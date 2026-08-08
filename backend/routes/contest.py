@@ -19,13 +19,30 @@ def _get_challenge_by_slug(slug: str, db: Session) -> Challenge | None:
     return db.query(Challenge).filter(Challenge.folder_name == slug).first()
 
 
+import time
+
+# In-process TTL cache for list_active_challenges (TTL ~60s).
+# NOTE: This cache is stored in-memory within this single process. If the backend is ever
+# horizontally scaled to multiple worker processes/instances, replace this with a centralized
+# Redis cache (similar to the in-memory WebSocket connection registry note in team_ws.py).
+_challenges_cache = {}
+_CHALLENGES_CACHE_TTL = 60.0  # seconds
+
+
 @router.get("/challenges")
 def list_active_challenges(mode: str | None = None, db: Session = Depends(get_db)):
+    cache_key = mode or "all"
+    now = time.time()
+    if cache_key in _challenges_cache:
+        cached_data, expiry = _challenges_cache[cache_key]
+        if now < expiry:
+            return cached_data
+
     query = db.query(Challenge).filter(Challenge.is_active == True)
     if mode in ("individual", "team"):
         query = query.filter(Challenge.mode == mode)
     challenges = query.order_by(Challenge.created_at.desc()).all()
-    return [
+    result = [
         {
             "id": c.id,
             "slug": c.slug,
@@ -39,6 +56,8 @@ def list_active_challenges(mode: str | None = None, db: Session = Depends(get_db
         }
         for c in challenges
     ]
+    _challenges_cache[cache_key] = (result, now + _CHALLENGES_CACHE_TTL)
+    return result
 
 
 @router.get("/challenge/{slug}", response_model=ChallengeResponse)

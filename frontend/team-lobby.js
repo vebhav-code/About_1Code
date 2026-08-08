@@ -132,10 +132,27 @@ function connectWebSocket() {
 }
 
 function handleWsMessage(msg) {
-  if (msg.type === "member_joined" || msg.type === "member_left") {
-    // Ideally we re-fetch team or just update local state
-    // Let's just re-fetch to ensure consistency
-    fetchTeamData();
+  if (msg.type === "member_joined") {
+    if (!teamData || !Array.isArray(teamData.members)) {
+      fetchTeamData();
+    } else {
+      const exists = teamData.members.some(m => m.user_id === msg.user_id);
+      if (!exists && msg.user_id) {
+        teamData.members.push({ user_id: msg.user_id, name: msg.name || "Anonymous" });
+      }
+      renderRoster(teamData.members);
+      updateStartButtonState(teamData.members.length);
+      refreshLeaderUI();
+    }
+  } else if (msg.type === "member_left") {
+    if (!teamData || !Array.isArray(teamData.members)) {
+      fetchTeamData();
+    } else {
+      teamData.members = teamData.members.filter(m => m.user_id !== msg.user_id);
+      renderRoster(teamData.members);
+      updateStartButtonState(teamData.members.length);
+      refreshLeaderUI();
+    }
   } else if (msg.type === "team_started") {
     // auto-navigate to workspace for non-leaders (and leader if they missed the POST response)
     sessionStorage.setItem(ssKey('session_id'), msg.session_id);

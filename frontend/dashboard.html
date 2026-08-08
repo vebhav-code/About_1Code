@@ -272,7 +272,10 @@
                 <span class="time-limit">
                   ⏱ ${c.time_limit || 45} mins
                 </span>
-                ${actionBtn}
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <a href="leaderboard.html?slug=${encodeURIComponent(c.slug)}" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.85rem;">🏆 Leaderboard</a>
+                  ${actionBtn}
+                </div>
               </div>
             </div>
           `;
