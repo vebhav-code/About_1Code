@@ -7,9 +7,32 @@ from database.connection import get_db
 from models.challenge import Challenge
 from schemas.challenge import ChallengeResponse
 
+from config import TURN_URL, TURN_USERNAME, TURN_CREDENTIAL
+
 router = APIRouter()
 
 ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
+
+
+@router.get("/api/rtc-config")
+def get_rtc_config():
+    """
+    Expose WebRTC ICE server configuration (STUN + optional TURN credentials from env)
+    to frontend clients dynamically without exposing static hardcoded secrets.
+    """
+    ice_servers = [
+        {"urls": "stun:stun.l.google.com:19302"},
+        {"urls": "stun:stun1.l.google.com:19302"},
+    ]
+    if TURN_URL and TURN_URL.strip():
+        turn_entry = {"urls": TURN_URL.strip()}
+        if TURN_USERNAME and TURN_USERNAME.strip():
+            turn_entry["username"] = TURN_USERNAME.strip()
+        if TURN_CREDENTIAL and TURN_CREDENTIAL.strip():
+            turn_entry["credential"] = TURN_CREDENTIAL.strip()
+        ice_servers.append(turn_entry)
+
+    return {"iceServers": ice_servers}
 
 
 def _get_challenge_by_slug(slug: str, db: Session) -> Challenge | None:

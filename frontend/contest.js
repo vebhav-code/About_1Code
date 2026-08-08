@@ -94,6 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     sessionId = sessionStorage.getItem(ssKey('session_id')) || null;
 
+    fetchRTCConfig();
     initializeChallenge();
     initializeDownload();
     initializeStart();
@@ -1099,17 +1100,29 @@ function renderPresenceBar() {
     Object.values(teamMembers).forEach(m => {
         const isSelf    = m.user_id === currentUser.user_id;
         const initials  = (m.name || m.username || "U").substring(0, 2).toUpperCase();
+
+        const rtcState = m.rtcState;
+        const isConnecting = !isSelf && m.isOnline && (rtcState === "connecting" || rtcState === "new");
+        const isFailed = !isSelf && m.isOnline && (rtcState === "failed");
+
         const classes   = [
             "team-avatar",
-            m.isMuted    ? "muted"   : "",
+            isConnecting ? "connecting" : (isFailed ? "failed" : (m.isMuted ? "muted" : "")),
             !m.isOnline  ? "offline" : "",
             isSelf       ? "self"    : ""
         ].filter(Boolean).join(" ");
 
+        let rtcTitleStatus = "";
+        if (!isSelf && m.isOnline) {
+            if (isConnecting) rtcTitleStatus = " — connecting voice…";
+            else if (isFailed) rtcTitleStatus = " — voice unavailable";
+            else if (rtcState === "connected" || rtcState === "completed") rtcTitleStatus = " — voice connected";
+        }
+
         const div = document.createElement("div");
         div.className = classes;
         div.textContent = initials;
-        div.title = (m.name || "Unknown") + (isSelf ? " (You)" : "") + (m.isMuted ? " — muted" : " — unmuted") + (!m.isOnline ? " — offline" : "");
+        div.title = (m.name || "Unknown") + (isSelf ? " (You)" : "") + (m.isMuted ? " — muted" : " — unmuted") + (!m.isOnline ? " — offline" : rtcTitleStatus);
         container.appendChild(div);
     });
 }
@@ -1141,16 +1154,47 @@ function showToast(message, durationMs = 3000) {
 // ===========================================================================
 // Task 6 — Group Voice: Mesh WebRTC
 //
-// Architecture: full mesh — every member has a direct RTCPeerConnection to
-// every other member.  Signaling (offers / answers / ICE candidates) travels
-// over the shared team WebSocket.
+// Manual QA Checklist:
+// 1. STUN Baseline (Same Network):
+//    - Open two tabs in the same browser/network.
+//    - Click "Unmute" in tab 1; click "Unmute" in tab 2.
+//    - Audio connects via Google STUN; presence avatars update state.
 //
-// WS message types defined here (sent by this client, expected from server):
-//   voice-offer   { type, target_user_id, from_user_id, offer: RTCSessionDescription }
-//   voice-answer  { type, target_user_id, from_user_id, answer: RTCSessionDescription }
-//   voice-ice     { type, target_user_id, from_user_id, candidate: RTCIceCandidateInit }
-//   mute_state    { type, user_id, is_muted }   ← also used for presence bar
+// 2. TURN Traversal (Cross Network / Mobile / Firewalls):
+//    - Configure TURN_URL, TURN_USERNAME, TURN_CREDENTIAL in backend .env.
+//    - Connect tab 1 on Wi-Fi and tab 2 on mobile hotspot / cellular data.
+//    - Verify GET /api/rtc-config returns turn: server entry.
+//    - Click "Unmute" on both sides. Audio connects cleanly over TURN.
+//
+// 3. Glare Handling (Simultaneous Unmute):
+//    - Click "Unmute" on both tabs at the exact same second.
+//    - Polite peer (lower user_id) rolls back local offer and accepts remote offer.
+//    - Impolite peer ignores colliding offer; WebRTC state transitions to "connected".
+//
+// 4. Disconnect Recovery (Transient Network Drop):
+//    - While on a live voice call, disconnect Wi-Fi on one device for 2-3 seconds.
+//    - Avatar shows "connecting..." state during disconnect.
+//    - Re-enable Wi-Fi. Connection recovers automatically to "connected".
+//    - If disconnect exceeds 5s timeout, auto-reconnect triggers one retry.
 // ===========================================================================
+
+let rtcConfigOverride = null;
+const rtcReconnectTimers = {};
+const rtcReconnectAttempts = {};
+
+async function fetchRTCConfig() {
+    try {
+        const res = await fetch(`${API_BASE}/api/rtc-config`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.iceServers) {
+                rtcConfigOverride = { iceServers: data.iceServers };
+            }
+        }
+    } catch (err) {
+        console.warn("[Voice] Failed to fetch /api/rtc-config, falling back to default STUN:", err);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Mic toggle — entry point for the mute/unmute button
@@ -1256,8 +1300,11 @@ function hideMicError() {
 // Peer connection lifecycle
 // ---------------------------------------------------------------------------
 
-/** STUN config — add TURN credentials here when available */
+/** Dynamic STUN/TURN config fetched from /api/rtc-config */
 function getRTCConfig() {
+    if (rtcConfigOverride) {
+        return rtcConfigOverride;
+    }
     return {
         iceServers: [
             { urls: "stun:stun.l.google.com:19302" },
@@ -1276,6 +1323,11 @@ function createPeerConnection(targetUserId, isInitiator) {
     const pc = new RTCPeerConnection(getRTCConfig());
     rtcPeers[targetUserId] = pc;
 
+    if (teamMembers[targetUserId]) {
+        teamMembers[targetUserId].rtcState = pc.connectionState || "new";
+        renderPresenceBar();
+    }
+
     // Add our local audio tracks if the mic is already on
     if (localAudioStream && !isMicMuted) {
         localAudioStream.getTracks().forEach(track => pc.addTrack(track, localAudioStream));
@@ -1293,11 +1345,43 @@ function createPeerConnection(targetUserId, isInitiator) {
         }
     };
 
-    // Log connection state changes for debugging
+    // Connection state changes: update UI & handle transient vs permanent disconnects
     pc.onconnectionstatechange = () => {
-        console.log(`[RTC ${targetUserId}] state →`, pc.connectionState);
-        if (pc.connectionState === "failed" || pc.connectionState === "closed") {
+        const state = pc.connectionState;
+        console.log(`[RTC ${targetUserId}] state →`, state);
+
+        if (teamMembers[targetUserId]) {
+            teamMembers[targetUserId].rtcState = state;
+            renderPresenceBar();
+        }
+
+        if (state === "connected" || state === "completed") {
+            if (rtcReconnectTimers[targetUserId]) {
+                clearTimeout(rtcReconnectTimers[targetUserId]);
+                delete rtcReconnectTimers[targetUserId];
+            }
+            hideMicError();
+        } else if (state === "disconnected") {
+            // WebRTC sometimes recovers on its own within a few seconds.
+            // Start a 5s timeout before tearing down and attempting a single auto-reconnect.
+            if (!rtcReconnectTimers[targetUserId]) {
+                rtcReconnectTimers[targetUserId] = setTimeout(() => {
+                    delete rtcReconnectTimers[targetUserId];
+                    const currentPc = rtcPeers[targetUserId];
+                    if (currentPc && (currentPc.connectionState === "disconnected" || currentPc.connectionState === "failed")) {
+                        console.log(`[RTC ${targetUserId}] Persistent disconnect after 5s — triggering reconnect...`);
+                        teardownPeer(targetUserId);
+                        attemptVoiceReconnect(targetUserId);
+                    }
+                }, 5000);
+            }
+        } else if (state === "failed" || state === "closed") {
+            if (rtcReconnectTimers[targetUserId]) {
+                clearTimeout(rtcReconnectTimers[targetUserId]);
+                delete rtcReconnectTimers[targetUserId];
+            }
             teardownPeer(targetUserId);
+            attemptVoiceReconnect(targetUserId);
         }
     };
 
@@ -1336,11 +1420,32 @@ function createPeerConnection(targetUserId, isInitiator) {
     return pc;
 }
 
+function attemptVoiceReconnect(targetUserId) {
+    if ((rtcReconnectAttempts[targetUserId] || 0) < 1) {
+        rtcReconnectAttempts[targetUserId] = 1;
+        const isPolite = Number(currentUser.user_id) < Number(targetUserId);
+        console.log(`[RTC ${targetUserId}] Attempting voice reconnection (isInitiator=${isPolite})...`);
+        createPeerConnection(targetUserId, /* isInitiator */ isPolite);
+    } else {
+        const memberName = teamMembers[targetUserId]?.name || "teammate";
+        showMicError(`Voice connection to ${memberName} failed — text chat and code sync are unaffected.`);
+        if (teamMembers[targetUserId]) {
+            teamMembers[targetUserId].rtcState = "failed";
+            renderPresenceBar();
+        }
+    }
+}
+
 /**
  * Tear down the peer connection to userId and clean up the audio element.
  * Safe to call multiple times.
  */
 function teardownPeer(userId) {
+    if (rtcReconnectTimers[userId]) {
+        clearTimeout(rtcReconnectTimers[userId]);
+        delete rtcReconnectTimers[userId];
+    }
+
     const pc = rtcPeers[userId];
     if (pc) {
         pc.onicecandidate    = null;
@@ -1353,6 +1458,11 @@ function teardownPeer(userId) {
     // Remove the injected <audio> element
     const audioEl = document.getElementById(`peer-audio-${userId}`);
     if (audioEl) audioEl.remove();
+
+    if (teamMembers[userId]) {
+        delete teamMembers[userId].rtcState;
+        renderPresenceBar();
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1361,8 +1471,31 @@ function teardownPeer(userId) {
 
 async function handleVoiceOffer(msg) {
     // Accept offers even when muted — we still want to hear the other side.
-    // We just won't add our own tracks until the user unmutes.
-    const pc = createPeerConnection(msg.from_user_id, /* isInitiator */ false);
+    const fromId = msg.from_user_id;
+    const isPolite = Number(currentUser.user_id) < Number(fromId);
+    let pc = rtcPeers[fromId];
+
+    // Perfect Negotiation Glare Resolution:
+    // When two teammates unmute within the same second (common at contest start),
+    // both sides create and send an SDP offer simultaneously, causing a signaling glare state ("have-local-offer").
+    // The polite peer (lower user_id) rolls back its local offer and accepts the remote offer.
+    // The impolite peer (higher user_id) ignores the colliding incoming offer and lets its outgoing offer proceed.
+    if (pc && pc.signalingState !== "stable") {
+        if (!isPolite) {
+            console.log(`[RTC ${fromId}] Signaling glare collision: impolite peer ignoring incoming offer.`);
+            return;
+        }
+        console.log(`[RTC ${fromId}] Signaling glare collision: polite peer rolling back local offer.`);
+        try {
+            await pc.setLocalDescription({ type: "rollback" });
+        } catch (err) {
+            console.warn(`[RTC ${fromId}] Rollback warning:`, err);
+        }
+    }
+
+    if (!pc) {
+        pc = createPeerConnection(fromId, /* isInitiator */ false);
+    }
 
     try {
         await pc.setRemoteDescription(new RTCSessionDescription(msg.offer));
@@ -1370,13 +1503,13 @@ async function handleVoiceOffer(msg) {
         await pc.setLocalDescription(answer);
         wsSend({
             type:           "voice-answer",
-            target_user_id: msg.from_user_id,
+            target_user_id: fromId,
             from_user_id:   currentUser.user_id,
             answer:         pc.localDescription
         });
     } catch (err) {
-        console.error(`[RTC ${msg.from_user_id}] answer failed:`, err);
-        teardownPeer(msg.from_user_id);
+        console.error(`[RTC ${fromId}] answer failed:`, err);
+        teardownPeer(fromId);
     }
 }
 

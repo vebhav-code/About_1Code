@@ -16,3 +16,8 @@ GEMINI_API_KEY = get_required_env("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 ADMIN_KEY = get_required_env("ADMIN_KEY")
 print(f"ADMIN_KEY loaded: {bool(ADMIN_KEY)}")
+
+# Optional WebRTC TURN server credentials for cross-network / firewall traversal
+TURN_URL = os.getenv("TURN_URL", "")
+TURN_USERNAME = os.getenv("TURN_USERNAME", "")
+TURN_CREDENTIAL = os.getenv("TURN_CREDENTIAL", "")
