@@ -16,6 +16,7 @@ from routes.session import router as session_router
 from routes.team import router as team_router
 from routes.team_ws import router as team_ws_router
 from routes.profile import router as profile_router
+from routes.stats import router as stats_router
 
 # Register models to ensure they are loaded into Base metadata
 import models.challenge
@@ -27,6 +28,7 @@ import models.chat_message
 import models.team
 import models.team_member
 import models.user_activity
+import models.site_visit
 
 
 
@@ -152,3 +154,4 @@ app.include_router(session_router)
 app.include_router(team_router)
 app.include_router(team_ws_router)
 app.include_router(profile_router)
+app.include_router(stats_router)

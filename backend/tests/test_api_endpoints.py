@@ -318,3 +318,54 @@ def test_profile_endpoint_handles_zero_submissions_and_team_submissions():
     assert payload["history"][0]["mode"] == "team"
     assert any(b["name"] == "Team Player" for b in payload["badges"])
     assert any(b["name"] == "Perfectionist" for b in payload["badges"])
+
+
+def test_stats_visit_logging_and_landing_endpoint():
+    from datetime import datetime, timezone
+    from models.site_visit import SiteVisit
+    import routes.stats
+
+    # Clear rate limit map and landing stats cache for deterministic test
+    routes.stats._visit_rate_limit_map.clear()
+    routes.stats._landing_stats_cache["timestamp"] = 0.0
+    routes.stats._landing_stats_cache["data"] = None
+
+    # 1. Post initial visit ping
+    visit_res_1 = client.post("/api/stats/visit")
+    assert visit_res_1.status_code == 200
+    assert visit_res_1.json() == {"ok": True}
+
+    # Verify count in database
+    db = SessionLocal()
+    today = datetime.now(timezone.utc).date()
+    v1 = db.query(SiteVisit).filter(SiteVisit.visit_date == today).first()
+    assert v1 is not None
+    initial_count = v1.count
+    assert initial_count >= 1
+    db.close()
+
+    # 2. Post second visit ping (from different client IP or within rate limit window)
+    visit_res_2 = client.post("/api/stats/visit")
+    assert visit_res_2.status_code == 200
+    assert visit_res_2.json() == {"ok": True}
+
+    db = SessionLocal()
+    v2 = db.query(SiteVisit).filter(SiteVisit.visit_date == today).first()
+    assert v2.count == initial_count + 1
+    db.close()
+
+    # Clear cache so GET /api/stats/landing reflects updated counts
+    routes.stats._landing_stats_cache["timestamp"] = 0.0
+    routes.stats._landing_stats_cache["data"] = None
+
+    # 3. Test GET /api/stats/landing
+    landing_res = client.get("/api/stats/landing")
+    assert landing_res.status_code == 200
+    stats = landing_res.json()
+    assert "total_users" in stats
+    assert "visitors_today" in stats
+    assert isinstance(stats["total_users"], int)
+    assert isinstance(stats["visitors_today"], int)
+    assert stats["total_users"] >= 1
+    assert stats["visitors_today"] >= v2.count
+

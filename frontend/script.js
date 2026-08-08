@@ -1,10 +1,63 @@
-/* =========================================================
-   1Code — Landing Page Interactions
-   Vanilla JS only. IntersectionObserver drives all scroll
-   animation; no external libraries.
-   ========================================================= */
+const API_BASE = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
+  ? 'http://127.0.0.1:8000'
+  : 'https://about-1code.onrender.com';
 
 document.addEventListener('DOMContentLoaded', () => {
+
+  /* ---------- Landing Page Traffic Stats & Visit Logging ---------- */
+  logDailyVisit();
+  fetchLandingStats();
+
+  function logDailyVisit() {
+    // SESSION-APPROXIMATE UNIQUE VISITOR HEURISTIC:
+    // We use sessionStorage per calendar day to avoid logging repeat page refreshes within the same browser session.
+    // This is a simple, privacy-respecting counter that collects zero cookies, IP addresses, or PII.
+    const todayStr = new Date().toISOString().split('T')[0];
+    const visitKey = `1code_visit_logged:${todayStr}`;
+
+    if (!sessionStorage.getItem(visitKey)) {
+      fetch(`${API_BASE}/api/stats/visit`, { method: 'POST' })
+        .then(() => sessionStorage.setItem(visitKey, 'true'))
+        .catch(err => console.warn('[Stats] Visit ping error:', err));
+    }
+  }
+
+  async function fetchLandingStats() {
+    const statUsersEl = document.getElementById('statTotalUsers');
+    const statVisitorsEl = document.getElementById('statVisitorsToday');
+    if (!statUsersEl && !statVisitorsEl) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/stats/landing`);
+      if (!res.ok) return;
+      const data = await res.json();
+
+      if (statUsersEl && typeof data.total_users === 'number') {
+        animateStatCount(statUsersEl, data.total_users);
+      }
+      if (statVisitorsEl && typeof data.visitors_today === 'number') {
+        animateStatCount(statVisitorsEl, data.visitors_today);
+      }
+    } catch (err) {
+      // Fail silently on public landing page — leave "—" placeholder as rendered in HTML
+      console.warn('[Stats] Failed to fetch landing stats:', err);
+    }
+  }
+
+  function animateStatCount(el, target) {
+    const duration = 800; // ~800ms count-up
+    const stepTime = 16;
+    let current = 0;
+    const increment = target / (duration / stepTime);
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= target) {
+        current = target;
+        clearInterval(timer);
+      }
+      el.textContent = Math.round(current).toLocaleString();
+    }, stepTime);
+  }
 
   /* ---------- generic scroll reveal ---------- */
   const revealEls = document.querySelectorAll('.reveal, .wf-step');

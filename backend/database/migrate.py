@@ -22,6 +22,7 @@ MIGRATION_FILES = [
     "migration_profile_activity.sql",
     "migration_perf_indexes.sql",
     "migration_user_ban.sql",
+    "migration_site_visits.sql",
 ]
 
 # Arbitrary constant, just needs to be unique to this app so it doesn't
