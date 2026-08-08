@@ -1,4 +1,5 @@
-from pydantic import BaseModel, EmailStr
+from typing import Optional
+from pydantic import BaseModel, EmailStr, Field
 
 
 class UserRegister(BaseModel):
@@ -25,3 +26,11 @@ class LoginOut(BaseModel):
     user_id: int
     name: str
     is_admin: bool = False
+
+
+class ProfileUpdate(BaseModel):
+    bio: Optional[str] = Field(None, max_length=280)
+    avatar_url: Optional[str] = None
+    github_url: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    website_url: Optional[str] = None

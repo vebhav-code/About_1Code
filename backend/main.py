@@ -15,6 +15,7 @@ from routes.admin import router as admin_router, login_router as admin_login_rou
 from routes.session import router as session_router
 from routes.team import router as team_router
 from routes.team_ws import router as team_ws_router
+from routes.profile import router as profile_router
 
 # Register models to ensure they are loaded into Base metadata
 import models.challenge
@@ -25,6 +26,8 @@ import models.session
 import models.chat_message
 import models.team
 import models.team_member
+import models.user_activity
+
 
 
 def seed_admin():
@@ -109,6 +112,10 @@ studio_dir = Path(__file__).resolve().parent.parent / "studio"
 if studio_dir.exists():
     app.mount("/studio", StaticFiles(directory=str(studio_dir), html=True), name="studio")
 
+uploads_dir = Path(__file__).resolve().parent / "uploads"
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
+
 app.include_router(auth_router)
 app.include_router(contest_router)
 app.include_router(submission_router)
@@ -119,3 +126,4 @@ app.include_router(admin_router)
 app.include_router(session_router)
 app.include_router(team_router)
 app.include_router(team_ws_router)
+app.include_router(profile_router)

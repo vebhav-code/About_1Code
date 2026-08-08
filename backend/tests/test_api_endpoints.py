@@ -227,3 +227,94 @@ def test_team_start_rejects_when_member_already_submitted_individually():
     response = client.post(f"/api/teams/{team_id}/start", json={"user_id": leader_id})
     assert response.status_code == 409
     assert "already submitted" in response.json()["detail"].lower()
+
+
+def test_profile_endpoint_handles_zero_submissions_and_team_submissions():
+    db = SessionLocal()
+    from models.submission import Submission
+    from models.team import Team
+    from models.team_member import TeamMember
+
+    profile_user = db.query(User).filter(User.email == "profile-user-unique@1code.com").first()
+    if not profile_user:
+        profile_user = User(name="Profile User", email="profile-user-unique@1code.com", password_hash="hash")
+        db.add(profile_user)
+        db.commit()
+        db.refresh(profile_user)
+
+    # Clean existing submissions/activity for test isolation
+    db.query(Submission).filter(Submission.user_id == profile_user.id).delete()
+    db.query(TeamMember).filter(TeamMember.user_id == profile_user.id).delete()
+    db.commit()
+
+    target_user_id = profile_user.id
+
+    response = client.get(f"/api/users/{target_user_id}/profile")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total_completed"] == 0
+    assert payload["rank"] is None
+    assert payload["percentile"] is None
+    assert payload["badges"] == []
+
+    team_challenge = db.query(Challenge).filter(Challenge.slug == "profile-team-challenge").first()
+    if not team_challenge:
+        team_challenge = Challenge(
+            slug="profile-team-challenge",
+            title="Profile Team Challenge",
+            description="Desc",
+            scenario="Scenario",
+            rules="Rules",
+            time_limit=45,
+            category="Security",
+            starter_code="def solve(): pass",
+            official_solution="def solve(): return True",
+            mode="team",
+            team_size=2,
+            is_active=True,
+            difficulty="Hard",
+        )
+        db.add(team_challenge)
+        db.commit()
+        db.refresh(team_challenge)
+
+    team = db.query(Team).filter(Team.challenge_id == team_challenge.id).first()
+    if not team:
+        team = Team(
+            challenge_id=team_challenge.id,
+            name="Profile Team",
+            invite_code="PROFILE1",
+            leader_user_id=target_user_id,
+            status="forming",
+        )
+        db.add(team)
+        db.commit()
+        db.refresh(team)
+
+    existing_member = db.query(TeamMember).filter(TeamMember.team_id == team.id, TeamMember.user_id == target_user_id).first()
+    if not existing_member:
+        db.add(TeamMember(team_id=team.id, user_id=target_user_id))
+        db.commit()
+
+    existing_submission = db.query(Submission).filter(Submission.challenge_id == team_challenge.id, Submission.team_id == team.id).first()
+    if not existing_submission:
+        db.add(Submission(
+            name="Team submission",
+            user_id=None,
+            team_id=team.id,
+            challenge_id=team_challenge.id,
+            feedback="",
+            overall_score=97,
+            late=False,
+        ))
+        db.commit()
+
+    db.close()
+
+    response = client.get(f"/api/users/{target_user_id}/profile")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total_completed"] == 1
+    assert payload["history"][0]["mode"] == "team"
+    assert any(b["name"] == "Team Player" for b in payload["badges"])
+    assert any(b["name"] == "Perfectionist" for b in payload["badges"])

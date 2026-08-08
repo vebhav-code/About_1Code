@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const data = await res.json();
       saveSession({ user_id: data.user_id, name: data.name });
-      window.location.href = 'contest.html';
+      window.location.href = 'dashboard.html';
 
     } catch (err) {
       showError('Could not reach the server. Is the backend running?');
@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Registration doubles as login for this prototype — no separate
       // session step exists, so we go straight to the dashboard.
       saveSession({ user_id: data.id, name: data.name });
-      window.location.href = 'contest.html';
+      window.location.href = 'dashboard.html';
 
     } catch (err) {
       showError('Could not reach the server. Is the backend running?');

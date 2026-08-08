@@ -25,6 +25,7 @@ from models.team import Team
 from models.team_member import TeamMember
 from models.user import User
 from routes.team_ws import broadcast_to_team
+from services.activity_service import record_visit
 from services.gemini_service import (
     chat_with_gemini,
     evaluate_submission_with_gemini,
@@ -154,6 +155,11 @@ def start_session(body: StartRequest, db: Session = Depends(get_db)):
     db.add(session)
     db.commit()
     db.refresh(session)
+
+    try:
+        record_visit(db, body.user_id)
+    except Exception as e:
+        logger.warning(f"Failed to record visit on session start for user {body.user_id}: {e}")
 
     return {
         "session_id": session.id,

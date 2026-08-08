@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import bcrypt
@@ -5,8 +6,12 @@ import bcrypt
 from database.connection import get_db
 from models.user import User
 from schemas.user import UserRegister, UserOut, UserLogin, LoginOut
+from services.activity_service import record_visit
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["auth"])
+
 
 
 def hash_password(password: str) -> str:
@@ -48,6 +53,11 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
 
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid Credentials")
+
+    try:
+        record_visit(db, user.id)
+    except Exception as e:
+        logger.warning(f"Failed to record visit for user {user.id}: {e}")
 
     return LoginOut(user_id=user.id, name=user.name, is_admin=user.is_admin)
 

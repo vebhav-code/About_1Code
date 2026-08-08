@@ -19,19 +19,34 @@ MIGRATION_FILES = [
     "migration_team_mode.sql",
     "migration_teams.sql",
     "migration_team_sessions.sql",
+    "migration_profile_activity.sql",
 ]
+
+# Arbitrary constant, just needs to be unique to this app so it doesn't
+# collide with an advisory lock used by something else on the same DB.
+MIGRATION_LOCK_ID = 8743217
 
 
 def run_migrations() -> None:
     migrations_dir = Path(__file__).resolve().parent
     with engine.connect() as conn:
-        for filename in MIGRATION_FILES:
-            path = migrations_dir / filename
-            if not path.exists():
-                continue
-            sql = path.read_text(encoding="utf-8")
-            for statement in sql.split(";"):
-                statement = statement.strip()
-                if statement:
-                    conn.execute(text(statement))
-        conn.commit()
+        # Serializes migration runs across processes — if a second process
+        # (e.g. an overlapping --reload restart) tries to run migrations
+        # while another is still in progress, it blocks here and waits its
+        # turn instead of racing on the same ALTER TABLE statements.
+        conn.execute(text("SELECT pg_advisory_lock(:lock_id)"), {"lock_id": MIGRATION_LOCK_ID})
+        try:
+            for filename in MIGRATION_FILES:
+                path = migrations_dir / filename
+                if not path.exists():
+                    continue
+                sql = path.read_text(encoding="utf-8")
+                for statement in sql.split(";"):
+                    statement = statement.strip()
+                    if statement:
+                        conn.execute(text(statement))
+            conn.commit()
+        finally:
+            conn.execute(text("SELECT pg_advisory_unlock(:lock_id)"), {"lock_id": MIGRATION_LOCK_ID})
+
+

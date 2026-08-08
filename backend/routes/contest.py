@@ -20,8 +20,11 @@ def _get_challenge_by_slug(slug: str, db: Session) -> Challenge | None:
 
 
 @router.get("/challenges")
-def list_active_challenges(db: Session = Depends(get_db)):
-    challenges = db.query(Challenge).filter(Challenge.is_active == True).order_by(Challenge.created_at.desc()).all()
+def list_active_challenges(mode: str | None = None, db: Session = Depends(get_db)):
+    query = db.query(Challenge).filter(Challenge.is_active == True)
+    if mode in ("individual", "team"):
+        query = query.filter(Challenge.mode == mode)
+    challenges = query.order_by(Challenge.created_at.desc()).all()
     return [
         {
             "id": c.id,

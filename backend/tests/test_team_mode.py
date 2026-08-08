@@ -426,6 +426,7 @@ def test_team_websocket_connection():
         "user_id": u1_id,
         "team_name": "WS Team"
     })
+    team_id = create_res.json()["team_id"]
     client.post("/api/teams/join", json={"user_id": u2_id, "team_id": team_id})
 
     # 1. Non-member connection rejected
