@@ -459,22 +459,59 @@ async function pollChatHistory() {
     } catch { /* silent — polling is best-effort */ }
 }
 
+function formatAssistantText(text) {
+    if (!text) return "";
+
+    const codeBlocks = [];
+    let processed = String(text).replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
+        const placeholder = `___CODEBLOCK_${codeBlocks.length}___`;
+        const escapedCode = escapeHtml(code.trim());
+        codeBlocks.push(`<pre><code class="language-${lang || 'text'}">${escapedCode}</code></pre>`);
+        return placeholder;
+    });
+
+    processed = escapeHtml(processed);
+    processed = processed.replace(/`([^`]+)`/g, (m, c) => `<code>${c}</code>`);
+    processed = processed.replace(/\*\*([^*]+)\*\*/g, (m, b) => `<strong>${b}</strong>`);
+    processed = processed.replace(/\n/g, "<br>");
+
+    codeBlocks.forEach((blockHtml, i) => {
+        processed = processed.replace(`___CODEBLOCK_${i}___`, blockHtml);
+    });
+
+    return processed;
+}
+
 function appendChatBubble(role, text, userName = null) {
     const container = document.getElementById("chatMessages");
     if (!container) return;
 
-    const bubble = document.createElement("div");
-    bubble.className = `chat-bubble ${role}`;
+    let bubbleRole = role;
+    if (role === "user" && userName && currentUser && userName !== currentUser.name) {
+        bubbleRole = "teammate";
+    }
 
-    let html = escapeHtml(text).replace(/\n/g, "<br>");
-    if (userName && role === "user") {
-        html = `<div style="font-size:0.75rem; opacity:0.7; margin-bottom:2px;">${escapeHtml(userName)}</div>` + html;
+    const bubble = document.createElement("div");
+    bubble.className = `chat-bubble ${bubbleRole}`;
+
+    let html = "";
+    if (role === "assistant") {
+        html = formatAssistantText(text);
+    } else {
+        html = escapeHtml(text).replace(/\n/g, "<br>");
+    }
+
+    if (userName && (bubbleRole === "user" || bubbleRole === "teammate")) {
+        const icon = bubbleRole === "teammate" ? "👥" : "👤";
+        html = `<div class="chat-user-name"><span>${icon}</span> ${escapeHtml(userName)}</div>` + html;
     }
 
     bubble.innerHTML = html;
 
     container.appendChild(bubble);
-    container.scrollTop = container.scrollHeight;
+    requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+    });
 }
 
 function setTypingIndicator(on) {
@@ -918,10 +955,10 @@ function handleTeamWsMessage(msg) {
             break;
 
         case "chat_message":
-            // A teammate sent a message — show it in the chat panel.
+            // A teammate sent a message — show it in the chat panel with teammate styling.
             // We skip our own user_id because we already showed it optimistically.
             if (msg.user_id !== currentUser.user_id) {
-                appendChatBubble("user", msg.message, msg.name);
+                appendChatBubble("teammate", msg.message, msg.name);
             }
             break;
 
