@@ -15,20 +15,23 @@ def setup_module():
     db = SessionLocal()
     from sqlalchemy import text
 
-    slugs = ["test-default-indiv", "test-team-challenge", "test-team-hp-slug", "test-team-rej-slug", "test-team-ws-slug", "test-team-sub-slug"]
+    slugs = ["test-default-indiv", "test-team-challenge", "test-team-hp-slug", "test-team-rej-slug", "test-team-ws-slug", "test-team-sub-slug", "test-multi-file-slug"]
     for slug in slugs:
         ch = db.query(Challenge).filter(Challenge.slug == slug).first()
         if ch:
             cid = ch.id
+            db.execute(text("DELETE FROM submission_files WHERE submission_id IN (SELECT id FROM submissions WHERE challenge_id = :cid)"), {"cid": cid})
             db.execute(text("DELETE FROM evaluations WHERE submission_id IN (SELECT id FROM submissions WHERE challenge_id = :cid)"), {"cid": cid})
             db.execute(text("DELETE FROM submissions WHERE challenge_id = :cid"), {"cid": cid})
             db.execute(text("DELETE FROM chat_messages WHERE session_id IN (SELECT id FROM challenge_sessions WHERE challenge_id = :cid)"), {"cid": cid})
             db.execute(text("DELETE FROM challenge_sessions WHERE challenge_id = :cid"), {"cid": cid})
             db.execute(text("DELETE FROM team_members WHERE team_id IN (SELECT id FROM teams WHERE challenge_id = :cid)"), {"cid": cid})
             db.execute(text("DELETE FROM teams WHERE challenge_id = :cid"), {"cid": cid})
+            db.execute(text("DELETE FROM challenge_files WHERE challenge_id = :cid"), {"cid": cid})
             db.execute(text("DELETE FROM challenges WHERE id = :cid"), {"cid": cid})
             db.commit()
     db.close()
+
 
 
 def test_create_individual_challenge_defaults():
@@ -502,6 +505,7 @@ def test_leader_only_submission_enforcement(monkeypatch):
             category="Testing",
             starter_code="def pass(): pass",
             official_solution="def pass(): pass",
+            run_command="python -c \"print('ok')\"",
             mode="team",
             team_size=4,
             is_active=True
@@ -509,6 +513,9 @@ def test_leader_only_submission_enforcement(monkeypatch):
         db.add(ch)
         db.commit()
         db.refresh(ch)
+    else:
+        ch.run_command = "python -c \"print('ok')\""
+        db.commit()
     ch_id = ch.id
     db.close()
 
@@ -565,4 +572,126 @@ def test_leader_only_submission_enforcement(monkeypatch):
     assert created_sub.team_id == team_id
     assert created_sub.user_id is None
     db_verify2.close()
+
+
+def test_multi_file_challenge_create_and_submit_gate(monkeypatch):
+    async def mock_eval(*args, **kwargs):
+        return {
+            "hypothesis": 20,
+            "prompt_quality": 25,
+            "ai_collaboration": 20,
+            "code_correctness": 25,
+            "problem_solving": 10,
+            "total_score": 100,
+            "strengths": ["Great multi-file fix"],
+            "improvements": [],
+            "overall_feedback": "All project files pass execution!"
+        }
+    monkeypatch.setattr("routes.session.evaluate_submission_with_gemini", mock_eval)
+
+    db_clean = SessionLocal()
+    from sqlalchemy import text
+    ch_existing = db_clean.query(Challenge).filter(Challenge.slug == "test-multi-file-slug").first()
+    if ch_existing:
+        cid = ch_existing.id
+        db_clean.execute(text("DELETE FROM submission_files WHERE submission_id IN (SELECT id FROM submissions WHERE challenge_id = :cid)"), {"cid": cid})
+        db_clean.execute(text("DELETE FROM evaluations WHERE submission_id IN (SELECT id FROM submissions WHERE challenge_id = :cid)"), {"cid": cid})
+        db_clean.execute(text("DELETE FROM submissions WHERE challenge_id = :cid"), {"cid": cid})
+        db_clean.execute(text("DELETE FROM chat_messages WHERE session_id IN (SELECT id FROM challenge_sessions WHERE challenge_id = :cid)"), {"cid": cid})
+        db_clean.execute(text("DELETE FROM challenge_sessions WHERE challenge_id = :cid"), {"cid": cid})
+        db_clean.execute(text("DELETE FROM challenge_files WHERE challenge_id = :cid"), {"cid": cid})
+        db_clean.execute(text("DELETE FROM challenges WHERE id = :cid"), {"cid": cid})
+        db_clean.commit()
+    db_clean.close()
+
+
+    # 1. Admin creates multi-file challenge
+
+    payload = {
+        "title": "Multi File Challenge",
+        "slug": "test-multi-file-slug",
+        "category": "Testing",
+        "difficulty": "Easy",
+        "time_limit": 30,
+        "description": "Multi file project test",
+        "scenario": "Fix broken imports and logic across files",
+        "rules": "Fix all files",
+        "run_command": "python test_project.py",
+        "files": [
+            {
+                "filename": "api.py",
+                "starter_content": "def calculate(a, b):\n    return a - b\n",
+                "solution_content": "def calculate(a, b):\n    return a + b\n",
+                "file_order": 0
+            },
+            {
+                "filename": "test_project.py",
+                "starter_content": "from api import calculate\ndef test_calc():\n    assert calculate(2, 3) == 5\nif __name__ == '__main__':\n    test_calc()\n    print('ALL TESTS PASSED')\n",
+                "solution_content": "from api import calculate\ndef test_calc():\n    assert calculate(2, 3) == 5\nif __name__ == '__main__':\n    test_calc()\n    print('ALL TESTS PASSED')\n",
+                "file_order": 1
+            }
+        ]
+    }
+    create_res = client.post("/api/admin/challenges", json=payload, headers=ADMIN_HEADERS)
+    assert create_res.status_code == 201
+    ch_data = create_res.json()
+    assert len(ch_data["files"]) == 2
+
+    # 2. Setup user and start session
+    db = SessionLocal()
+    from models.user import User
+    from models.submission_file import SubmissionFile
+    u = db.query(User).filter(User.email == "multifile_leader@1code.com").first()
+    if not u:
+        u = User(name="MF Leader", email="multifile_leader@1code.com", password_hash="hash")
+        db.add(u)
+        db.commit()
+        db.refresh(u)
+    leader_id = u.id
+    db.close()
+
+    s_res = client.post("/api/sessions/start", json={
+        "challenge_id": ch_data["id"],
+        "user_id": leader_id,
+        "name": "MF Leader",
+        "hypothesis": "Broken subtraction logic in api.py"
+    })
+    assert s_res.status_code == 201
+    session_id = s_res.json()["session_id"]
+
+    # 3. Submit broken code -> Execution gate MUST fail
+    sub_fail = client.post(f"/api/sessions/{session_id}/submit", json={"actor_user_id": leader_id})
+    assert sub_fail.status_code == 200
+    res_fail = sub_fail.json()
+    assert res_fail["passed"] is False
+    assert res_fail["exit_code"] != 0
+
+    # 4. Save fixed code
+    fixed_files = {
+        "api.py": "def calculate(a, b):\n    return a + b\n",
+        "test_project.py": "from api import calculate\ndef test_calc():\n    assert calculate(2, 3) == 5\nif __name__ == '__main__':\n    test_calc()\n    print('ALL TESTS PASSED')\n"
+    }
+    save_res = client.post(f"/api/sessions/{session_id}/save-code", json={
+        "files": fixed_files,
+        "actor_user_id": leader_id
+    })
+    assert save_res.status_code == 200
+
+    # 5. Submit fixed code -> Execution gate MUST pass & store SubmissionFile records
+    sub_pass = client.post(f"/api/sessions/{session_id}/submit", json={"actor_user_id": leader_id})
+    assert sub_pass.status_code == 200
+    res_pass = sub_pass.json()
+    assert res_pass["passed"] is True
+    sub_id = res_pass["submission_id"]
+
+    # 6. Verify SubmissionFile records exist in database
+    db_verify = SessionLocal()
+    sub_files = db_verify.query(SubmissionFile).filter(SubmissionFile.submission_id == sub_id).all()
+    assert len(sub_files) == 2
+    filenames = {sf.filename for sf in sub_files}
+    assert "api.py" in filenames
+    assert "test_project.py" in filenames
+    db_verify.close()
+
+
 

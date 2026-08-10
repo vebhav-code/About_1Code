@@ -1,5 +1,6 @@
 import { initDashboard }       from './dashboard.js';
 import { initUpload }          from './upload.js';
+import { initTeamChallenge }   from './team-challenge.js';
 import { initChallenges }      from './challenges.js';
 import { initChallengeDetails } from './challenge-details.js';
 import { initSubmissions }     from './submissions.js';
@@ -32,6 +33,7 @@ const quickUpload  = document.getElementById('quick-upload');
 const ROUTES = {
   dashboard:        { title: 'Dashboard',       breadcrumb: 'Overview',     init: initDashboard,       fragment: 'pages/dashboard.html' },
   'upload-challenge':{ title: 'Upload Challenge', breadcrumb: 'Upload',      init: initUpload,          fragment: 'pages/upload-challenge.html' },
+  'team-challenge': { title: 'New Team Challenge', breadcrumb: 'Build',      init: initTeamChallenge,   fragment: 'pages/team-challenge.html' },
   challenges:       { title: 'Challenges',      breadcrumb: 'Manage',       init: initChallenges,      fragment: 'pages/challenges.html' },
   users:            { title: 'User Management', breadcrumb: 'Users',        init: initUsers,           fragment: 'pages/users.html' },
   submissions:      { title: 'Submissions',     breadcrumb: 'Review',       init: initSubmissions,     fragment: 'pages/submissions.html' },

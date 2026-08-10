@@ -167,11 +167,25 @@ export async function initChallengeDetails(id) {
             <textarea id="edit-rules" class="form-textarea">${details.rules || ''}</textarea>
           </div>
           <div class="form-group">
-            <label class="form-label" for="edit-starter-code">Starter Code</label>
+            <label class="form-label" for="edit-run-command">Run Command (Sandbox Execution Entrypoint)</label>
+            <input type="text" id="edit-run-command" class="form-input" style="font-family:monospace;" value="${details.run_command || 'pytest'}">
+          </div>
+
+          <!-- Multi-File Section -->
+          <div style="border:1px solid var(--border); border-radius:6px; padding:12px; background:rgba(255,255,255,0.02); margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <label class="form-label" style="margin:0; font-weight:700;">Project Files (Multi-File Challenge)</label>
+              <button type="button" id="edit-add-file-btn" class="button" style="padding:4px 10px; font-size:0.8rem;">+ Add File</button>
+            </div>
+            <div id="edit-files-container" style="display:flex; flex-direction:column; gap:12px;"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-starter-code">Default Starter Code (Legacy / Fallback)</label>
             <textarea id="edit-starter-code" class="form-textarea" style="font-family:monospace;">${details.starter_code || ''}</textarea>
           </div>
           <div class="form-group">
-            <label class="form-label" for="edit-official-solution">Official Solution</label>
+            <label class="form-label" for="edit-official-solution">Default Official Solution (Legacy / Fallback)</label>
             <textarea id="edit-official-solution" class="form-textarea" style="font-family:monospace;">${details.official_solution || ''}</textarea>
           </div>
         </div>
@@ -182,6 +196,41 @@ export async function initChallengeDetails(id) {
       </div>`;
 
     document.body.appendChild(backdrop);
+
+    const editFilesContainer = document.getElementById('edit-files-container');
+    const editAddFileBtn = document.getElementById('edit-add-file-btn');
+
+    function createEditFileCard(filename = '', starterContent = '', solutionContent = '') {
+      const card = document.createElement('div');
+      card.className = 'file-card';
+      card.style.cssText = 'border:1px solid var(--border); border-radius:6px; padding:10px; background:rgba(0,0,0,0.2);';
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <label style="font-weight:600; font-size:0.8rem;">Filename</label>
+          <button type="button" class="button remove-file-btn" style="padding:2px 8px; font-size:0.75rem; background:rgba(239,68,68,0.2); color:#fca5a5; border:1px solid rgba(239,68,68,0.4);">Delete File</button>
+        </div>
+        <input type="text" class="file-name-input form-input" value="${filename}" placeholder="e.g. api.py" style="width:100%; margin-bottom:8px; font-family:monospace; font-size:0.8rem;" />
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+          <div>
+            <label style="font-weight:600; font-size:0.75rem; display:block; margin-bottom:2px;">Starter Content</label>
+            <textarea class="file-starter-input form-textarea" rows="4" style="font-family:monospace; font-size:0.75rem;">${starterContent}</textarea>
+          </div>
+          <div>
+            <label style="font-weight:600; font-size:0.75rem; display:block; margin-bottom:2px;">Official Solution</label>
+            <textarea class="file-solution-input form-textarea" rows="4" style="font-family:monospace; font-size:0.75rem;">${solutionContent}</textarea>
+          </div>
+        </div>
+      `;
+      card.querySelector('.remove-file-btn').addEventListener('click', () => card.remove());
+      editFilesContainer.appendChild(card);
+    }
+
+    if (editAddFileBtn && editFilesContainer) {
+      editAddFileBtn.addEventListener('click', () => createEditFileCard());
+      if (Array.isArray(details.files) && details.files.length > 0) {
+        details.files.forEach(f => createEditFileCard(f.filename, f.starter_content, f.solution_content));
+      }
+    }
 
     const close = () => backdrop.remove();
     document.getElementById('edit-close-btn').addEventListener('click', close);
@@ -214,6 +263,21 @@ export async function initChallengeDetails(id) {
       let team_size = parseInt(document.getElementById('edit-team-size').value, 10) || 1;
       if (mode === 'individual') team_size = 1;
 
+      // Collect project files
+      const fileCards = editFilesContainer ? Array.from(editFilesContainer.querySelectorAll('.file-card')) : [];
+      const filesList = [];
+      fileCards.forEach((card, idx) => {
+        const fn = card.querySelector('.file-name-input')?.value?.trim();
+        if (fn) {
+          filesList.push({
+            filename: fn,
+            starter_content: card.querySelector('.file-starter-input')?.value || '',
+            solution_content: card.querySelector('.file-solution-input')?.value || '',
+            file_order: idx
+          });
+        }
+      });
+
       const payload = {
         title: document.getElementById('edit-title').value,
         difficulty: document.getElementById('edit-difficulty').value,
@@ -223,6 +287,8 @@ export async function initChallengeDetails(id) {
         description: document.getElementById('edit-description').value,
         scenario: document.getElementById('edit-scenario').value,
         rules: document.getElementById('edit-rules').value,
+        run_command: document.getElementById('edit-run-command')?.value || 'pytest',
+        files: filesList,
         starter_code: document.getElementById('edit-starter-code').value,
         official_solution: document.getElementById('edit-official-solution').value
       };
@@ -239,5 +305,6 @@ export async function initChallengeDetails(id) {
         saveBtn.disabled = false;
       }
     });
+
   }
 }

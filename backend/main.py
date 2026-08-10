@@ -20,15 +20,19 @@ from routes.stats import router as stats_router
 
 # Register models to ensure they are loaded into Base metadata
 import models.challenge
+import models.challenge_file
 import models.submission
+import models.submission_file
 import models.evaluation
 import models.user
 import models.session
 import models.chat_message
 import models.team
 import models.team_member
+import models.team_join_request
 import models.user_activity
 import models.site_visit
+
 
 
 

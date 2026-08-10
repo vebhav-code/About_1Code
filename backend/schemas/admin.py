@@ -4,6 +4,20 @@ from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, field_validator
 
 
+class ChallengeFileInput(BaseModel):
+    filename: str
+    starter_content: str
+    solution_content: str
+    file_order: int = 0
+    language: Optional[str] = None
+
+    @field_validator("filename")
+    @classmethod
+    def validate_filename(cls, value: str) -> str:
+        from utils.file_validation import validate_challenge_filename
+        return validate_challenge_filename(value)
+
+
 class AdminChallengeBase(BaseModel):
     title: str
     description: str
@@ -12,10 +26,13 @@ class AdminChallengeBase(BaseModel):
     rules: str
     time_limit: int
     category: str
-    starter_code: str
-    official_solution: str
+    starter_code: Optional[str] = ""
+    official_solution: Optional[str] = ""
+    run_command: Optional[str] = "pytest"
+    files: list[ChallengeFileInput] = []
     mode: Literal["individual", "team"] = "individual"
     team_size: int = 1
+    challenge_format: Literal["debug", "build"] = "debug"
 
 
 class AdminChallengeCreate(AdminChallengeBase):
@@ -53,8 +70,11 @@ class AdminChallengeUpdate(BaseModel):
     category: Optional[str] = None
     starter_code: Optional[str] = None
     official_solution: Optional[str] = None
+    run_command: Optional[str] = None
+    files: Optional[list[ChallengeFileInput]] = None
     mode: Optional[Literal["individual", "team"]] = None
     team_size: Optional[int] = None
+    challenge_format: Optional[Literal["debug", "build"]] = None
 
     @field_validator("team_size")
     @classmethod
@@ -85,13 +105,18 @@ class AdminChallengeResponse(BaseModel):
     is_active: bool
     created_at: datetime
     category: Optional[str] = ""
+    run_command: Optional[str] = "pytest"
+    files: list[ChallengeFileInput] = []
     mode: str = "individual"
     team_size: int = 1
+    challenge_format: str = "debug"
 
 
 class AdminChallengeDetailResponse(AdminChallengeResponse):
     starter_code: str = ""
     official_solution: str = ""
+
+
 
 
 class AdminChallengeDeleteResponse(BaseModel):

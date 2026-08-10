@@ -1,0 +1,65 @@
+<div class="page-header">
+  <div class="page-header-copy">
+    <span class="page-eyebrow">Create</span>
+    <h3>New Team Challenge (Build From Scratch)</h3>
+  </div>
+</div>
+
+<div class="card edit-form-grid">
+  <form id="create-team-challenge-form" style="display:flex; flex-direction:column; gap:16px;">
+    
+    <div id="team-upload-error" class="alert alert-error" hidden style="color:var(--text-error); background:var(--bg-error); padding:12px; border-radius:6px; font-size:0.9rem;"></div>
+    
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+      <div class="form-group">
+        <label for="title" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Title</label>
+        <input type="text" id="title" name="title" required placeholder="e.g. Build microservices auth module" class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px;" />
+      </div>
+      <div class="form-group">
+        <label for="slug" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Slug</label>
+        <input type="text" id="slug" name="slug" pattern="[-a-z0-9]+" required placeholder="e.g. build-auth-service" title="Only lowercase letters, numbers, and hyphens" class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px;" />
+      </div>
+    </div>
+    
+    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:16px;">
+      <div class="form-group">
+        <label for="category" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Category</label>
+        <select id="category" name="category" required class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px;">
+          <option value="Authentication">Authentication</option>
+          <option value="Database">Database</option>
+          <option value="Performance">Performance</option>
+          <option value="Security">Security</option>
+          <option value="API">API</option>
+          <option value="Architecture">Architecture</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="difficulty" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Difficulty</label>
+        <select id="difficulty" name="difficulty" required class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px;">
+          <option value="Easy">Easy</option>
+          <option value="Medium" selected>Medium</option>
+          <option value="Hard">Hard</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="time_limit" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Time Limit (mins)</label>
+        <input type="number" id="time_limit" name="time_limit" value="60" min="1" required class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px;" />
+      </div>
+      <div class="form-group">
+        <label for="team_size" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Team Size</label>
+        <input type="number" id="team_size" name="team_size" value="4" min="2" max="8" required class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px;" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="task_description" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Task Description</label>
+      <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:6px;">Describe what the team needs to build from scratch. Be specific about specifications, requirements, and expected functionality.</p>
+      <textarea id="task_description" name="task_description" required rows="6" placeholder="Describe what the team needs to build..." class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; font-family:inherit;"></textarea>
+    </div>
+
+    <div class="action-row" style="justify-content: flex-end; gap: 12px; margin-top: 12px;">
+      <button type="submit" id="submit-team-challenge" class="button button-primary">Create Team Build Challenge</button>
+    </div>
+  </form>
+</div>

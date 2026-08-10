@@ -140,6 +140,11 @@ def read_source_files(directory: Path) -> str:
 
 
 def read_official_solution(challenge) -> str:
+    if hasattr(challenge, "files") and challenge.files:
+        parts = []
+        for f in sorted(challenge.files, key=lambda x: x.file_order):
+            parts.append(f"File: {f.filename}\n{'-'*40}\n{f.solution_content}\n{'='*40}\n")
+        return "\n".join(parts)
     return challenge.official_solution or "No official solution reference is available for this challenge."
 
 
@@ -167,6 +172,17 @@ async def evaluate_submission_with_gemini(
         else ""
     )
 
+    if user_code_content and user_code_content.strip().startswith("{"):
+        try:
+            files_map = json.loads(user_code_content)
+            if isinstance(files_map, dict):
+                parts = []
+                for fname, fcontent in files_map.items():
+                    parts.append(f"File: {fname}\n{'-'*40}\n{fcontent}\n{'='*40}\n")
+                user_code_content = "\n".join(parts)
+        except Exception:
+            pass
+
     prompt = f"""
 You are an expert AI code reviewer and grading agent for 1Code, an AI-native debugging platform.
 Evaluate the user's submission and return ONLY a JSON object — no markdown, no extra text.
@@ -185,6 +201,7 @@ Evaluate the user's submission and return ONLY a JSON object — no markdown, no
 
 ### USER'S FIXED PROJECT SOURCE CODE
 {user_code_content}
+
 
 ### USER'S DEBUG LOG (debug_log.txt)
 {db_log_content}
@@ -253,6 +270,7 @@ async def chat_with_gemini(
     scenario: str,
     current_code: str,
     message: str,
+    history: list[dict] | None = None,
 ) -> str:
     """
     Helper (non-grading) Gemini call using a pairing-partner persona.
@@ -264,6 +282,11 @@ async def chat_with_gemini(
     # Truncate code context to avoid token limits while still being useful
     code_preview = current_code[:3000] + "\n...(truncated)" if len(current_code) > 3000 else current_code
 
+    history_text = ""
+    if history:
+        turns = [f"{'User' if h['role'] == 'user' else 'Assistant'}: {h['content']}" for h in history[-10:]]
+        history_text = "\n\nPrevious conversation:\n" + "\n".join(turns)
+
     prompt = f"""You are a helpful coding assistant and expert debugging partner for 1Code.
 The user is working on the following challenge:
 
@@ -272,9 +295,9 @@ SCENARIO:
 
 THEIR CURRENT CODE:
 {code_preview if code_preview.strip() else "(No code written yet)"}
+{history_text}
 
-USER MESSAGE:
-{message}
+Current message: {message}
 
 Respond as a real pairing partner would: ask clarifying questions, suggest what to look for,
 explain concepts clearly. Do NOT hand them the complete fixed solution outright — guide them
@@ -295,3 +318,61 @@ Plain text only, no markdown formatting."""
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Gemini chat error: {str(e)}"
         )
+
+
+async def check_code_for_errors(task_description: str, files: dict[str, str]) -> dict:
+    """
+    Compiler-style static analyzer check using Gemini.
+    Evaluates project files against the task description for execution-breaking errors.
+    """
+    client = _get_client()
+    files_text = "\n\n".join(f"--- {name} ---\n{content}" for name, content in files.items()) if files else "(No files created yet)"
+
+    prompt = f"""You are acting as a strict compiler and static analyzer, not a conversational assistant. Review the following files against the task below.
+
+TASK: {task_description}
+
+FILES:
+{files_text}
+
+Report every real error you find — syntax errors, undefined references, type mismatches, obvious logic errors that would cause a runtime failure. Do NOT give general code-quality feedback or style suggestions — only things that would actually break execution or clearly fail the task.
+
+Respond with ONLY valid JSON, no markdown fences:
+{{
+  "errors": [
+    {{"file": "<filename>", "location": "<function/line reference if identifiable>", "message": "<what's wrong>"}}
+  ],
+  "clean": <true if no errors found, false otherwise>
+}}"""
+
+    try:
+        start_time = time.perf_counter()
+        logger.info("Starting Gemini check_code_for_errors request...")
+        text = await asyncio.to_thread(_call_gemini, client, prompt)
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        logger.info(f"Gemini check_code_for_errors call completed in {duration_ms:.2f} ms")
+        result = _parse_json_response(text)
+    except json.JSONDecodeError as je:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Gemini returned invalid JSON: {je}. Raw: {text[:500]}"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Gemini API check code error: {str(e)}"
+        )
+
+    if not isinstance(result, dict):
+        result = {"errors": [], "clean": True}
+
+    if "errors" not in result or not isinstance(result["errors"], list):
+        result["errors"] = []
+
+    if "clean" not in result:
+        result["clean"] = len(result["errors"]) == 0
+
+    return result
+

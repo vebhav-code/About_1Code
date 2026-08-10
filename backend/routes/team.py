@@ -17,6 +17,7 @@ from models.session import ChallengeSession
 from models.submission import Submission
 from models.team import Team
 from models.team_member import TeamMember
+from models.team_join_request import TeamJoinRequest
 from models.user import User
 from routes.team_ws import broadcast_to_team
 from schemas.team import (
@@ -394,3 +395,90 @@ def start_team_challenge(team_id: int, body: TeamStartRequest, db: Session = Dep
         "starter_code": starter_code,
         "challenge": challenge_info,
     }
+
+
+@router.get("/users/search")
+@router.get("/team/users/search")
+def search_users(q: str, current_user_id: int, db: Session = Depends(get_db)):
+    if len(q.strip()) < 2:
+        return []
+    results = (
+        db.query(User)
+        .filter(User.id != current_user_id, User.name.ilike(f"%{q.strip()}%"))
+        .limit(10)
+        .all()
+    )
+    return [{"id": u.id, "name": u.name} for u in results]
+
+
+@router.post("/teams/{team_id}/invite")
+@router.post("/team/teams/{team_id}/invite")
+def invite_to_team(team_id: int, invited_user_id: int, inviter_user_id: int, db: Session = Depends(get_db)):
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if team.leader_user_id != inviter_user_id:
+        raise HTTPException(status_code=403, detail="Only the team leader can send invites")
+
+    challenge = db.query(Challenge).filter(Challenge.id == team.challenge_id).first()
+    max_team_size = challenge.team_size if challenge else getattr(team, "team_size", 4)
+
+    current_size = db.query(TeamMember).filter(TeamMember.team_id == team_id).count()
+    if current_size >= max_team_size:
+        raise HTTPException(status_code=400, detail="Team is already full")
+
+    already_member = db.query(TeamMember).filter(TeamMember.team_id == team_id, TeamMember.user_id == invited_user_id).first()
+    if already_member:
+        raise HTTPException(status_code=400, detail="User is already on this team")
+
+    existing_request = db.query(TeamJoinRequest).filter(
+        TeamJoinRequest.team_id == team_id,
+        TeamJoinRequest.invited_user_id == invited_user_id,
+        TeamJoinRequest.status == "pending",
+    ).first()
+    if existing_request:
+        raise HTTPException(status_code=400, detail="Invite already pending for this user")
+
+    invite = TeamJoinRequest(team_id=team_id, invited_user_id=invited_user_id, invited_by_user_id=inviter_user_id)
+    db.add(invite)
+    db.commit()
+    db.refresh(invite)
+    return {"invite_id": invite.id, "status": "pending"}
+
+
+@router.get("/users/{user_id}/join-requests")
+@router.get("/team/users/{user_id}/join-requests")
+def get_pending_requests(user_id: int, db: Session = Depends(get_db)):
+    requests = db.query(TeamJoinRequest).filter(
+        TeamJoinRequest.invited_user_id == user_id, TeamJoinRequest.status == "pending"
+    ).all()
+    result = []
+    for r in requests:
+        team = db.query(Team).filter(Team.id == r.team_id).first()
+        inviter = db.query(User).filter(User.id == r.invited_by_user_id).first()
+        result.append({
+            "request_id": r.id,
+            "team_id": r.team_id,
+            "team_name": team.name if team else "Unknown Team",
+            "invited_by": inviter.name if inviter else "Someone",
+        })
+    return result
+
+
+@router.post("/join-requests/{request_id}/respond")
+@router.post("/team/join-requests/{request_id}/respond")
+def respond_to_request(request_id: int, accept: bool, responding_user_id: int, db: Session = Depends(get_db)):
+    req = db.query(TeamJoinRequest).filter(TeamJoinRequest.id == request_id).first()
+    if not req or req.invited_user_id != responding_user_id:
+        raise HTTPException(status_code=404, detail="Request not found")
+    if req.status != "pending":
+        raise HTTPException(status_code=400, detail="Request already responded to")
+
+    req.status = "accepted" if accept else "declined"
+    if accept:
+        already = db.query(TeamMember).filter(TeamMember.team_id == req.team_id, TeamMember.user_id == responding_user_id).first()
+        if not already:
+            db.add(TeamMember(team_id=req.team_id, user_id=responding_user_id))
+    db.commit()
+    return {"status": req.status}
+

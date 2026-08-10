@@ -5,10 +5,11 @@ Replaces the zip-upload flow with a server-tracked session + live editor + chat.
 Generalised for both individual and team mode sessions.
 """
 
+import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -21,13 +22,16 @@ from models.chat_message import ChatMessage
 from models.evaluation import Evaluation
 from models.session import ChallengeSession
 from models.submission import Submission
+from models.submission_file import SubmissionFile
 from models.team import Team
 from models.team_member import TeamMember
 from models.user import User
 from routes.team_ws import broadcast_to_team
 from services.activity_service import record_visit
+from services.execution_service import run_submission_code
 from services.gemini_service import (
     chat_with_gemini,
+    check_code_for_errors,
     evaluate_submission_with_gemini,
     read_official_solution,
     read_source_files,
@@ -57,12 +61,15 @@ class ChatRequest(BaseModel):
 
 
 class SaveCodeRequest(BaseModel):
-    code: str
+    code: Optional[str] = None
+    filename: Optional[str] = None
+    files: Optional[Dict[str, str]] = None
     actor_user_id: Optional[int] = None
 
 
 class SubmitRequest(BaseModel):
     actor_user_id: Optional[int] = None
+
 
 
 # ---------------------------------------------------------------------------
@@ -277,17 +284,26 @@ async def send_message(
             exclude_user_id=body.actor_user_id,
         )
 
-    # 2. Call Gemini
+    # 2. Call Gemini with actor's prior conversation history
+    prior_messages = (
+        db.query(ChatMessage)
+        .filter(ChatMessage.session_id == session_id, ChatMessage.user_id == body.actor_user_id)
+        .order_by(ChatMessage.created_at.asc())
+        .all()
+    )
+    history = [{"role": m.role, "content": m.content} for m in prior_messages if m.id != user_msg.id]
+
     reply_text = await chat_with_gemini(
         scenario=challenge.scenario or "",
         current_code=session.current_code,
         message=body.message,
+        history=history,
     )
 
-    # 3. Persist assistant message
+    # 3. Persist assistant message (attributed to the requesting user)
     assistant_msg = ChatMessage(
         session_id=session_id,
-        user_id=None,
+        user_id=body.actor_user_id,
         role="assistant",
         content=reply_text,
     )
@@ -302,10 +318,39 @@ async def send_message(
                 "type": "assistant_reply",
                 "message": reply_text,
                 "msg_id": assistant_msg.id,
+                "user_id": body.actor_user_id,
             },
         )
 
     return {"reply": reply_text}
+
+
+@router.get("/{session_id}")
+def get_session_details(session_id: int, db: Session = Depends(get_db)):
+    """
+    Return session state including current_code, files, challenge metadata, and time_limit.
+    Used when a user or teammate reloads/opens the workspace.
+    """
+    session = db.query(ChallengeSession).filter(ChallengeSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    challenge = db.query(Challenge).filter(Challenge.id == session.challenge_id).first()
+
+    return {
+        "id": session.id,
+        "challenge_id": session.challenge_id,
+        "team_id": session.team_id,
+        "current_code": session.current_code,
+        "submitted_at": session.submitted_at.isoformat() if session.submitted_at else None,
+        "challenge": {
+            "title": challenge.title if challenge else "",
+            "slug": challenge.slug if challenge else "",
+            "scenario": challenge.scenario if challenge else "",
+            "time_limit": challenge.time_limit if challenge else 45,
+            "mode": challenge.mode if challenge else "individual",
+        } if challenge else None,
+    }
 
 
 @router.get("/{session_id}/messages")
@@ -352,9 +397,35 @@ def save_code(
 
     _authorize_session_actor(session, body.actor_user_id, db)
 
-    session.current_code = body.code
+    if body.files is not None:
+        session.current_code = json.dumps(body.files)
+    elif body.filename and body.code is not None:
+        try:
+            files_dict = json.loads(session.current_code or "{}")
+            if not isinstance(files_dict, dict):
+                files_dict = {}
+        except Exception:
+            files_dict = {}
+        files_dict[body.filename] = body.code
+        session.current_code = json.dumps(files_dict)
+    elif body.code is not None:
+        session.current_code = body.code
+
     db.commit()
+
+    if session.team_id:
+        broadcast_to_team(
+            team_id=session.team_id,
+            message={
+                "type": "code_update",
+                "current_code": session.current_code,
+                "user_id": body.actor_user_id,
+            },
+            exclude_user_id=body.actor_user_id,
+        )
+
     return {"saved": True}
+
 
 
 @router.post("/{session_id}/submit")
@@ -409,13 +480,75 @@ async def submit_session(
     time_limit = challenge.time_limit or 45
     is_late = elapsed_minutes > time_limit
 
-    # 1. Mark submitted
+    # 1. Gather all submission files
+    files_dict = {}
+    if session.current_code:
+        try:
+            parsed = json.loads(session.current_code)
+            if isinstance(parsed, dict):
+                files_dict = parsed
+        except Exception:
+            pass
+
+    if not files_dict:
+        if challenge.files:
+            files_dict = {f.filename: f.starter_content for f in challenge.files}
+        else:
+            files_dict = {"main.py": session.current_code or ""}
+
+    # 2. Run isolated execution check as scoring gate
+    exec_result = run_submission_code(
+        files=files_dict,
+        run_command=getattr(challenge, "run_command", None) or "pytest",
+        timeout_seconds=15,
+    )
+
+    # Legacy single-file mode fallback: if no ChallengeFile records exist and pytest returns 5 (no tests found), treat as passed
+    if not exec_result["passed"] and exec_result["exit_code"] == 5 and not getattr(challenge, "files", None):
+        exec_result["passed"] = True
+
+    # 3. Store execution log file
+
+    log_dir = Path(__file__).resolve().parent.parent / "uploads" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    timestamp_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    log_filename = f"sub_exec_{session_id}_{timestamp_str}.log"
+    log_file_path = log_dir / log_filename
+
+    log_body = (
+        f"=== 1CODE SUBMISSION EXECUTION LOG ===\n"
+        f"Session ID: {session_id}\n"
+        f"Challenge: {challenge.title} ({challenge.slug})\n"
+        f"Command: {challenge.run_command or 'pytest'}\n"
+        f"Passed: {exec_result['passed']}\n"
+        f"Exit Code: {exec_result['exit_code']}\n"
+        f"Duration: {exec_result['duration_ms']} ms\n\n"
+        f"--- STDOUT ---\n{exec_result['stdout']}\n\n"
+        f"--- STDERR ---\n{exec_result['stderr']}\n"
+    )
+    log_file_path.write_text(log_body, encoding="utf-8")
+    relative_log_path = f"uploads/logs/{log_filename}"
+
+    # 4. If execution failed, DO NOT proceed to Gemini evaluation or create scored submission
+    if not exec_result["passed"]:
+        db.rollback()
+        return {
+            "passed": False,
+            "exit_code": exec_result["exit_code"],
+            "stdout": exec_result["stdout"],
+            "stderr": exec_result["stderr"],
+            "duration_ms": exec_result["duration_ms"],
+            "debug_log_path": relative_log_path,
+            "detail": "Execution failed. All project tests must pass before submission can be evaluated by AI.",
+        }
+
+    # 5. Mark session submitted
     session.submitted_at = datetime.now(timezone.utc)
     if team:
         team.status = "submitted"
     db.flush()
 
-    # 2. Assemble chat transcript
+    # 6. Assemble chat transcript & official solution
     messages = (
         db.query(ChatMessage)
         .filter(ChatMessage.session_id == session_id)
@@ -428,19 +561,26 @@ async def submit_session(
     ]
     chat_transcript = "\n\n".join(transcript_parts) if transcript_parts else "(no chat messages)"
 
-    # 3. Read official solution
     try:
         official_solution = read_official_solution(challenge)
     except Exception:
         official_solution = "No official solution reference is available for this challenge."
 
-    # 4. Evaluate with Gemini
+    # 7. Ground Gemini evaluation with code & execution output
+    full_user_code_with_exec = (
+        f"{session.current_code or '(no code submitted)'}\n\n"
+        f"--- REAL EXECUTION RUN RESULTS ---\n"
+        f"Exit Code: {exec_result['exit_code']}\n"
+        f"Stdout:\n{exec_result['stdout']}\n"
+        f"Stderr:\n{exec_result['stderr']}\n"
+    )
+
     try:
         gemini_result = await evaluate_submission_with_gemini(
             submission=None,
             challenge=challenge,
             db_log_content=chat_transcript,
-            user_code_content=session.current_code or "(no code submitted)",
+            user_code_content=full_user_code_with_exec,
             official_solution_content=official_solution,
             hypothesis_content=session.hypothesis or "(no hypothesis provided)",
             is_late=is_late,
@@ -454,7 +594,7 @@ async def submit_session(
             detail=f"Evaluation failed: {str(e)}",
         )
 
-    # 5. Store Submission
+    # 8. Store Submission
     sub_name = team.name if team else session.name
     sub_user_id = None if team else session.user_id
     sub_team_id = team.id if team else None
@@ -465,7 +605,7 @@ async def submit_session(
         team_id=sub_team_id,
         challenge_id=challenge.id,
         fixed_project_path=None,
-        debug_log_path=None,
+        debug_log_path=relative_log_path,
         late=is_late,
         problem_understanding_score=gemini_result.get("problem_solving", 0),
         prompt_quality_score=gemini_result.get("prompt_quality", 0),
@@ -477,7 +617,17 @@ async def submit_session(
     db.add(submission)
     db.flush()
 
-    # 6. Store Evaluation
+    # 9. Store SubmissionFile rows
+    for filename, content in files_dict.items():
+        db.add(
+            SubmissionFile(
+                submission_id=submission.id,
+                filename=filename,
+                content=content or "",
+            )
+        )
+
+    # 10. Store Evaluation
     evaluation = Evaluation(
         submission_id=submission.id,
         hypothesis=gemini_result.get("hypothesis", 0),
@@ -502,4 +652,51 @@ async def submit_session(
             },
         )
 
-    return {"submission_id": submission.id}
+    return {
+        "passed": True,
+        "submission_id": submission.id,
+        "stdout": exec_result["stdout"],
+        "stderr": exec_result["stderr"],
+    }
+
+
+@router.post("/{session_id}/check-code")
+async def check_code(session_id: int, db: Session = Depends(get_db)):
+    session = db.query(ChallengeSession).filter(ChallengeSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    challenge = db.query(Challenge).filter(Challenge.id == session.challenge_id).first()
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+
+    files = {}
+    if session.current_code:
+        try:
+            parsed = json.loads(session.current_code)
+            if isinstance(parsed, dict):
+                files = parsed
+            else:
+                files = {"main.py": str(session.current_code)}
+        except Exception:
+            files = {"main.py": str(session.current_code)}
+
+    if not files:
+        if getattr(challenge, "files", None):
+            files = {f.filename: f.starter_content for f in challenge.files}
+        else:
+            files = {"main.py": session.current_code or ""}
+
+    run_cmd = getattr(challenge, "run_command", None) or "python main.py"
+    result = run_submission_code(
+        files=files,
+        run_command=run_cmd,
+        timeout_seconds=15,
+    )
+    return {
+        "passed": result["passed"],
+        "stdout": result["stdout"],
+        "stderr": result["stderr"],
+        "exit_code": result.get("exit_code"),
+    }
+
+

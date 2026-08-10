@@ -18,6 +18,20 @@ def validate_challenge_slug(slug: str) -> str:
     return slug
 
 
+def validate_challenge_filename(filename: str) -> str:
+    """Ensure filename is a safe, non-path-traversal file path."""
+    if not filename or not isinstance(filename, str):
+        raise FileValidationError("Invalid filename")
+    cleaned = filename.strip().replace("\\", "/")
+    parts = cleaned.split("/")
+    if ".." in parts or "." in parts or cleaned.startswith("/") or ":" in cleaned or "\0" in cleaned:
+        raise FileValidationError("Invalid filename: path traversal or invalid characters detected")
+    if not re.fullmatch(r"[A-Za-z0-9_.\-/]+", cleaned):
+        raise FileValidationError("Invalid characters in filename")
+    return cleaned
+
+
+
 ALLOWED_AVATAR_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
 MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
 

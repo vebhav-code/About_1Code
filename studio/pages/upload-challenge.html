@@ -17,7 +17,7 @@
       </div>
       <div class="form-group">
         <label for="slug" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Slug</label>
-        <input type="text" id="slug" name="slug" pattern="[a-z0-9-]+" required title="Only lowercase letters, numbers, and hyphens" class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px;" />
+        <input type="text" id="slug" name="slug" pattern="[-a-z0-9]+" required title="Only lowercase letters, numbers, and hyphens" class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px;" />
       </div>
     </div>
     
@@ -77,13 +77,31 @@
     </div>
 
     <div class="form-group">
-      <label for="starter_code" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Starter Code</label>
-      <textarea id="starter_code" name="starter_code" required rows="8" class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; font-family:monospace; font-size:0.85rem;"></textarea>
+      <label for="run_command" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Run Command (Sandbox Execution Entrypoint)</label>
+      <input type="text" id="run_command" name="run_command" value="pytest" placeholder="e.g. pytest test_project.py" class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; font-family:monospace;" />
+    </div>
+
+    <!-- Multi-File Project Section -->
+    <div style="border:1px solid var(--border); border-radius:6px; padding:16px; background:rgba(255,255,255,0.02); margin-top:8px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h4 style="margin:0; font-size:1rem; font-weight:600;">Project Files (Multi-File Challenge)</h4>
+        <button type="button" id="add-file-btn" class="button" style="padding:4px 12px; font-size:0.85rem;">+ Add File</button>
+      </div>
+      <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:12px;">
+        Add files that make up this challenge. You can also specify test files (e.g. <code>test_project.py</code>) that <code>run_command</code> will execute.
+      </p>
+
+      <div id="project-files-container" style="display:flex; flex-direction:column; gap:16px;"></div>
+    </div>
+
+    <div class="form-group" style="margin-top:12px;">
+      <label for="starter_code" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Default Starter Code (Legacy / Fallback)</label>
+      <textarea id="starter_code" name="starter_code" rows="5" class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; font-family:monospace; font-size:0.85rem;"></textarea>
     </div>
 
     <div class="form-group">
-      <label for="official_solution" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Official Solution (grading-reference-only)</label>
-      <textarea id="official_solution" name="official_solution" required rows="8" class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; font-family:monospace; font-size:0.85rem;"></textarea>
+      <label for="official_solution" style="font-weight:600; font-size:0.9rem; margin-bottom:6px; display:block;">Default Official Solution (Legacy / Fallback)</label>
+      <textarea id="official_solution" name="official_solution" rows="5" class="form-control" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; font-family:monospace; font-size:0.85rem;"></textarea>
     </div>
 
     <div class="action-row" style="justify-content: flex-end; gap: 12px; margin-top: 12px;">

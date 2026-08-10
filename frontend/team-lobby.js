@@ -33,6 +33,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   connectWebSocket();
   setupStartButton();
   setupMicCheck();
+  setupUserSearch();
 });
 
 async function fetchTeamData() {
@@ -156,7 +157,20 @@ function handleWsMessage(msg) {
   } else if (msg.type === "team_started") {
     // auto-navigate to workspace for non-leaders (and leader if they missed the POST response)
     sessionStorage.setItem(ssKey('session_id'), msg.session_id);
-    if (msg.starter_code) sessionStorage.setItem(ssKey('code'), msg.starter_code);
+    if (msg.starter_code) {
+      sessionStorage.setItem(ssKey('code'), msg.starter_code);
+      try {
+        const parsed = (typeof msg.starter_code === "string" && msg.starter_code.trim().startsWith("{")) ? JSON.parse(msg.starter_code) : (typeof msg.starter_code === "object" ? msg.starter_code : null);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          sessionStorage.setItem(ssKey('project_files'), JSON.stringify(parsed));
+          const keys = Object.keys(parsed);
+          if (keys.length > 0) {
+            sessionStorage.setItem(ssKey('active_filename'), keys[0]);
+            sessionStorage.setItem(ssKey('code'), parsed[keys[0]] || "");
+          }
+        }
+      } catch (e) {}
+    }
     if (msg.challenge && msg.challenge.time_limit) {
       sessionStorage.setItem(ssKey('timer'), msg.challenge.time_limit * 60);
     }
@@ -188,7 +202,20 @@ function setupStartButton() {
       
       // On success, navigate immediately
       sessionStorage.setItem(ssKey('session_id'), data.session_id);
-      if (data.starter_code) sessionStorage.setItem(ssKey('code'), data.starter_code);
+      if (data.starter_code) {
+        sessionStorage.setItem(ssKey('code'), data.starter_code);
+        try {
+          const parsed = (typeof data.starter_code === "string" && data.starter_code.trim().startsWith("{")) ? JSON.parse(data.starter_code) : (typeof data.starter_code === "object" ? data.starter_code : null);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            sessionStorage.setItem(ssKey('project_files'), JSON.stringify(parsed));
+            const keys = Object.keys(parsed);
+            if (keys.length > 0) {
+              sessionStorage.setItem(ssKey('active_filename'), keys[0]);
+              sessionStorage.setItem(ssKey('code'), parsed[keys[0]] || "");
+            }
+          }
+        } catch (e) {}
+      }
       if (data.challenge && data.challenge.time_limit) {
         sessionStorage.setItem(ssKey('timer'), data.challenge.time_limit * 60);
       }
@@ -212,14 +239,17 @@ function setupStartButton() {
 function refreshLeaderUI() {
   const btn = document.getElementById("startChallengeBtn");
   const waitMsg = document.getElementById("waitMessage");
+  const searchSec = document.getElementById("leaderSearchSection");
   if (!btn || !waitMsg) return;
 
   if (isLeader) {
     btn.style.display = "block";
     waitMsg.style.display = "none";
+    if (searchSec) searchSec.style.display = "block";
   } else {
     btn.style.display = "none";
     waitMsg.style.display = "block";
+    if (searchSec) searchSec.style.display = "none";
   }
 }
 
@@ -317,3 +347,78 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+let searchDebounceTimeout = null;
+
+function setupUserSearch() {
+  const input = document.getElementById("userSearchInput");
+  const resultsContainer = document.getElementById("userSearchResults");
+  if (!input || !resultsContainer) return;
+
+  input.addEventListener("input", () => {
+    if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
+    const q = input.value.trim();
+    if (q.length < 2) {
+      resultsContainer.innerHTML = "";
+      return;
+    }
+    searchDebounceTimeout = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/users/search?q=${encodeURIComponent(q)}&current_user_id=${userId}`);
+        if (!res.ok) return;
+        const users = await res.json();
+        renderSearchResults(users);
+      } catch (e) {
+        console.error("User search failed", e);
+      }
+    }, 300);
+  });
+}
+
+function renderSearchResults(users) {
+  const container = document.getElementById("userSearchResults");
+  if (!container) return;
+  container.innerHTML = "";
+
+  if (!users || users.length === 0) {
+    container.innerHTML = `<div style="font-size: 0.8rem; color: var(--text-muted, #94a3b8); padding: 4px 0;">No matching registered users found.</div>`;
+    return;
+  }
+
+  users.forEach(u => {
+    const row = document.createElement("div");
+    row.style.cssText = "display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 6px;";
+    
+    row.innerHTML = `
+      <span style="font-size: 0.85rem; font-weight: 500;">${escapeHtml(u.name)}</span>
+      <button class="btn btn-ghost" style="padding: 3px 10px; font-size: 0.75rem;" data-user-id="${u.id}">Invite</button>
+    `;
+
+    const inviteBtn = row.querySelector("button");
+    inviteBtn.addEventListener("click", async () => {
+      inviteBtn.disabled = true;
+      inviteBtn.textContent = "Inviting...";
+      try {
+        const res = await fetch(`${API_BASE}/api/teams/${TEAM_ID}/invite?invited_user_id=${u.id}&inviter_user_id=${userId}`, {
+          method: "POST"
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.detail || "Failed to send invite");
+          inviteBtn.disabled = false;
+          inviteBtn.textContent = "Invite";
+          return;
+        }
+        inviteBtn.textContent = "Invited ✓";
+        inviteBtn.style.color = "#10b981";
+      } catch (err) {
+        alert("Could not reach server");
+        inviteBtn.disabled = false;
+        inviteBtn.textContent = "Invite";
+      }
+    });
+
+    container.appendChild(row);
+  });
+}
+

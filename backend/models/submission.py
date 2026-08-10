@@ -22,3 +22,6 @@ class Submission(Base):
     overall_score = Column(Integer, nullable=False, default=0)
     feedback = Column(Text, nullable=False, default="")
     submitted_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    files = relationship("SubmissionFile", back_populates="submission", cascade="all, delete-orphan")
+

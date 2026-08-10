@@ -182,6 +182,7 @@
       </nav>
 
       <main class="dashboard-container">
+        <div id="pendingInvitesContainer"></div>
         <div class="dashboard-header">
           <h1 id="welcomeTitle">Available Debugging Challenges</h1>
           <p>Select a challenge to test your reasoning and AI debugging collaboration.</p>
@@ -291,7 +292,79 @@
         });
       });
 
+      async function loadPendingInvites() {
+        const userId = session?.user_id || session?.id;
+        if (!userId) return;
+        try {
+          const res = await fetch(`${API_BASE}/api/users/${userId}/join-requests`);
+          if (!res.ok) return;
+          const requests = await res.json();
+          renderPendingInvites(requests);
+        } catch (e) {
+          console.error("Failed to load join requests", e);
+        }
+      }
+
+      function renderPendingInvites(requests) {
+        const container = document.getElementById("pendingInvitesContainer");
+        if (!container) return;
+        if (!requests || requests.length === 0) {
+          container.innerHTML = "";
+          return;
+        }
+
+        const userId = session?.user_id || session?.id;
+
+        container.innerHTML = requests.map(r => `
+          <div class="glass-card" style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px;">
+            <div>
+              <div style="font-weight: 600; font-size: 1rem; color: #f8fafc;">Team Invitation</div>
+              <div style="font-size: 0.9rem; color: #94a3b8; margin-top: 2px;">
+                <strong>${escapeHtml(r.invited_by)}</strong> invited you to join <strong>${escapeHtml(r.team_name)}</strong>
+              </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-primary respond-invite-btn" data-req-id="${r.request_id}" data-accept="true" style="padding: 6px 14px; font-size: 0.85rem;">Accept</button>
+              <button class="btn btn-ghost respond-invite-btn" data-req-id="${r.request_id}" data-accept="false" style="padding: 6px 14px; font-size: 0.85rem; color: #ef4444; border-color: rgba(239, 68, 68, 0.3);">Decline</button>
+            </div>
+          </div>
+        `).join('');
+
+        container.querySelectorAll('.respond-invite-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const reqId = btn.dataset.reqId;
+            const accept = btn.dataset.accept === "true";
+            btn.disabled = true;
+
+            try {
+              const res = await fetch(`${API_BASE}/api/join-requests/${reqId}/respond?accept=${accept}&responding_user_id=${userId}`, {
+                method: "POST"
+              });
+              if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                alert(err.detail || "Failed to respond to invite");
+                btn.disabled = false;
+                return;
+              }
+              loadPendingInvites();
+            } catch (err) {
+              alert("Network error");
+              btn.disabled = false;
+            }
+          });
+        });
+      }
+
+      function escapeHtml(str) {
+        return String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
       loadChallenges();
+      loadPendingInvites();
     </script>
   </body>
 </html>

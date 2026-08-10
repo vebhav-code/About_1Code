@@ -204,6 +204,7 @@
               </span>
               <span id="saveStatus" class="save-status" title="Auto-save status">—</span>
             </div>
+            <div id="fileTabsBar" class="file-tabs-bar" style="display: none;"></div>
             <div class="code-editor-wrapper">
               <textarea
                 id="codeEditor"
@@ -215,7 +216,24 @@
               ></textarea>
               <div id="cursorOverlay" class="cursor-overlay" aria-hidden="true"></div>
             </div>
+            <!-- Sandbox Execution Output Panel -->
+            <div id="execOutputPanel" class="exec-output-panel" style="display: none;">
+              <div class="exec-output-header">
+                <span>⚠️ Sandbox Execution & Test Logs</span>
+                <button id="closeExecOutputBtn" class="btn-icon" type="button">✕</button>
+              </div>
+              <pre id="execOutputText"></pre>
+            </div>
+            <!-- Compiler Check Output Panel -->
+            <div id="compilerOutputPanel" class="compiler-output-panel" style="display: none;">
+              <div class="compiler-output-header">
+                <span>💻 Static Analyzer & Compiler Diagnostics</span>
+                <button id="closeCompilerOutputBtn" class="btn-icon" type="button">✕</button>
+              </div>
+              <div id="compilerOutputContent" class="compiler-output-content"></div>
+            </div>
           </div>
+
 
           <!-- Chat Pane -->
           <div class="chat-pane">
@@ -251,10 +269,15 @@
 
         <!-- Submit Bar -->
         <div class="submit-bar">
-          <p class="submit-hint">Review your fix before submitting — only one submission is allowed.</p>
-          <button id="submitBtn" class="btn btn-primary submit-workspace-btn">
-            Submit for Grading
-          </button>
+          <p class="submit-hint">Check your code with static diagnostics before final submission.</p>
+          <div class="submit-actions-group" style="display:flex; gap:12px; align-items:center;">
+            <button id="checkCodeBtn" class="btn btn-secondary check-code-btn" type="button">
+              ⚡ Submit Code (Compiler Check)
+            </button>
+            <button id="submitBtn" class="btn btn-primary submit-workspace-btn">
+              Submit for Grading
+            </button>
+          </div>
         </div>
       </div>
     </section>

@@ -58,7 +58,7 @@ def admin_login(body: Optional[AdminLoginRequest] = None):
         )
 
 
-@router.post("/challenges", response_model=AdminChallengeResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/challenges", response_model=AdminChallengeDetailResponse, status_code=status.HTTP_201_CREATED)
 def create_challenge(payload: AdminChallengeCreate, db: Session = Depends(get_db)) -> Dict[str, Any]:
     service = ChallengeUploadService(db)
     return service.create_challenge(payload)
@@ -85,12 +85,13 @@ def get_challenge(
     return challenge
 
 
-@router.put("/challenges/{challenge_id}", response_model=AdminChallengeResponse)
+@router.put("/challenges/{challenge_id}", response_model=AdminChallengeDetailResponse)
 def update_challenge(
     challenge_id: int,
     payload: AdminChallengeUpdate,
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
+
     service = ChallengeUploadService(db)
     return service.update_challenge(challenge_id, payload.model_dump(exclude_unset=True))
 

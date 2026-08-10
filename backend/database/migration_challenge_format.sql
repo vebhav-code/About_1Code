@@ -1,0 +1,1 @@
+ALTER TABLE challenges ADD COLUMN IF NOT EXISTS challenge_format VARCHAR NOT NULL DEFAULT 'debug';

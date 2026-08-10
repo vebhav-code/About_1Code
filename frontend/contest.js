@@ -27,6 +27,11 @@ let saveInterval   = null;
 let lastSavedCode  = "";
 let isSubmitted    = false;
 
+let projectFiles   = {};
+let activeFilename = "main.py";
+let currentChallengeFormat = "debug";
+
+
 // sessionStorage keys scoped by slug so state from one challenge
 // never leaks into a different challenge's page.
 function ssKey(suffix) { return `challenge_${suffix}:${CHALLENGE_SLUG}`; }
@@ -99,16 +104,35 @@ document.addEventListener("DOMContentLoaded", () => {
     initializeDownload();
     initializeStart();
 
-    // If a session was already started (e.g. page reload), jump straight to workspace
+    // If a session was already started (e.g. page reload or team workspace join), jump straight to workspace
     if (sessionId) {
-        revealWorkspace(null, null);   // no starter code; editor restores from sessionStorage
-        const savedCode = sessionStorage.getItem(ssKey('code')) || "";
-        document.getElementById("codeEditor").value = savedCode;
-        lastSavedCode = savedCode;
-        const savedTime = parseInt(sessionStorage.getItem(ssKey('timer')) || "0", 10);
-        startTimer(savedTime);
+        fetchSessionStateAndReveal(sessionId);
     }
 });
+
+async function fetchSessionStateAndReveal(sessId) {
+    try {
+        const res = await fetch(`${API_BASE}/api/sessions/${sessId}`);
+        if (res.ok) {
+            const data = await res.json();
+            revealWorkspace(data.current_code, data.challenge);
+            const savedTime = parseInt(sessionStorage.getItem(ssKey('timer')) || "0", 10);
+            startTimer(savedTime > 0 ? savedTime : (data.challenge?.time_limit || 45) * 60);
+            return;
+        }
+    } catch (e) {
+        console.error("Failed to fetch session state from server", e);
+    }
+
+    // Local sessionStorage fallback
+    revealWorkspace(null, null);
+    const savedCode = sessionStorage.getItem(ssKey('code')) || "";
+    const editor = document.getElementById("codeEditor");
+    if (editor) editor.value = savedCode;
+    lastSavedCode = savedCode;
+    const savedTime = parseInt(sessionStorage.getItem(ssKey('timer')) || "0", 10);
+    startTimer(savedTime);
+}
 
 // ---------------------------------------------------------------------------
 // Load challenge details
@@ -268,6 +292,128 @@ function initializeStart() {
     }
 }
 
+let remoteFileLocations = {};
+
+function parseStarterFiles(input) {
+    if (!input) return null;
+    if (typeof input === "object" && !Array.isArray(input)) {
+        return input;
+    }
+    if (typeof input === "string") {
+        const trimmed = input.trim();
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+                    return parsed;
+                }
+            } catch (e) { }
+        }
+    }
+    return null;
+}
+
+function renderFileTabs() {
+    const tabsContainer = document.getElementById("fileTabsBar");
+    if (!tabsContainer) return;
+    const filenames = Object.keys(projectFiles);
+    if (filenames.length <= 1 && !TEAM_ID && currentChallengeFormat !== "build") {
+        tabsContainer.style.display = "none";
+        return;
+    }
+    tabsContainer.style.display = "flex";
+    tabsContainer.innerHTML = "";
+    filenames.forEach(name => {
+        const tab = document.createElement("button");
+        tab.className = `file-tab ${name === activeFilename ? "active" : ""}`;
+        tab.type = "button";
+
+        const activeTeammates = Object.values(remoteFileLocations || {})
+            .filter(loc => loc.filename === name && loc.user_id !== currentUser.user_id)
+            .map(loc => loc.name);
+
+        let badgeHtml = "";
+        if (activeTeammates.length > 0) {
+            badgeHtml = `<span class="tab-teammate-badge" style="font-size:0.75rem; color:#a855f7; font-weight:normal;" title="${escapeHtml(activeTeammates.join(', '))} working here">👥 ${escapeHtml(activeTeammates[0])}</span>`;
+        }
+
+        tab.innerHTML = `<span>${escapeHtml(name)}</span> ${badgeHtml}`;
+        tab.addEventListener("click", () => switchActiveFile(name));
+        tabsContainer.appendChild(tab);
+    });
+
+    const addFileBtn = document.createElement("button");
+    addFileBtn.className = "file-tab add-file-tab";
+    addFileBtn.type = "button";
+    addFileBtn.title = "Add a new file to this project";
+    addFileBtn.innerHTML = `<span style="font-weight:bold; color:#38bdf8;">+</span> Add File`;
+    addFileBtn.addEventListener("click", () => addNewProjectFile());
+    tabsContainer.appendChild(addFileBtn);
+}
+
+function addNewProjectFile(filenameInput = null) {
+    let name = filenameInput;
+    if (!name) {
+        name = prompt("Enter new filename (e.g. utils.py, auth.py, test_main.py):");
+    }
+    if (!name || !name.trim()) return;
+    name = name.trim();
+
+    if (name.includes("/") || name.includes("\\") || name.includes("..")) {
+        alert("Invalid filename. Filename cannot contain path separators.");
+        return;
+    }
+
+    if (projectFiles[name] !== undefined) {
+        switchActiveFile(name);
+        return;
+    }
+
+    const defaultContent = name.endsWith(".py") ? `# ${name}\n\n` : "";
+    projectFiles[name] = defaultContent;
+    sessionStorage.setItem(ssKey('project_files'), JSON.stringify(projectFiles));
+
+    switchActiveFile(name);
+    saveCode();
+
+    if (teamWs && teamWs.readyState === WebSocket.OPEN) {
+        teamWs.send(JSON.stringify({
+            type: "file_create",
+            user_id: currentUser.user_id,
+            name: currentUser.name,
+            filename: name,
+            content: defaultContent
+        }));
+    }
+}
+
+function switchActiveFile(newFilename) {
+    if (!newFilename || !(newFilename in projectFiles)) return;
+    const editor = document.getElementById("codeEditor");
+    if (editor && activeFilename && (activeFilename in projectFiles)) {
+        projectFiles[activeFilename] = editor.value;
+    }
+    activeFilename = newFilename;
+    sessionStorage.setItem(ssKey('active_filename'), activeFilename);
+    sessionStorage.setItem(ssKey('project_files'), JSON.stringify(projectFiles));
+    if (editor) {
+        editor.placeholder = "Write code here...";
+        editor.value = projectFiles[activeFilename] || "";
+        lastSavedCode = editor.value;
+        lastSyncedCode = editor.value;
+    }
+    renderFileTabs();
+
+    if (teamWs && teamWs.readyState === WebSocket.OPEN) {
+        teamWs.send(JSON.stringify({
+            type: "file_switch",
+            user_id: currentUser.user_id,
+            filename: activeFilename,
+            name: currentUser.name
+        }));
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Reveal workspace
 // ---------------------------------------------------------------------------
@@ -277,16 +423,82 @@ function revealWorkspace(starterCode, challengeData) {
     if (startSection)     startSection.style.display     = "none";
     if (workspaceSection) workspaceSection.style.display = "block";
 
+    if (challengeData && challengeData.challenge_format) {
+        currentChallengeFormat = challengeData.challenge_format;
+    } else if (starterCode === "{}") {
+        currentChallengeFormat = "build";
+    }
+
     const editor = document.getElementById("codeEditor");
-    if (editor && starterCode) {
-        editor.value = starterCode;
-        lastSavedCode = starterCode;
-        sessionStorage.setItem(ssKey('code'), starterCode);
+
+    let parsedFiles = parseStarterFiles(starterCode);
+
+    if (!parsedFiles) {
+        const storedFiles = sessionStorage.getItem(ssKey('project_files'));
+        if (storedFiles) {
+            parsedFiles = parseStarterFiles(storedFiles);
+        }
+    }
+
+    if (!parsedFiles) {
+        const storedCode = sessionStorage.getItem(ssKey('code'));
+        if (storedCode) {
+            parsedFiles = parseStarterFiles(storedCode);
+            if (!parsedFiles && storedCode) {
+                parsedFiles = { "main.py": storedCode };
+            }
+        }
+    }
+
+    if (!parsedFiles && starterCode && typeof starterCode === "string" && starterCode !== "{}") {
+        parsedFiles = { "main.py": starterCode };
+    }
+
+    const isBuildFormat = currentChallengeFormat === "build" || starterCode === "{}";
+
+    if (!parsedFiles) {
+        parsedFiles = isBuildFormat ? {} : { "main.py": "" };
+    }
+
+    projectFiles = parsedFiles;
+    const filenames = Object.keys(projectFiles);
+
+    const storedActive = sessionStorage.getItem(ssKey('active_filename'));
+    if (storedActive && (storedActive in projectFiles)) {
+        activeFilename = storedActive;
+    } else {
+        activeFilename = filenames[0] || null;
+    }
+
+    sessionStorage.setItem(ssKey('project_files'), JSON.stringify(projectFiles));
+    sessionStorage.setItem(ssKey('active_filename'), activeFilename || "");
+    sessionStorage.setItem(ssKey('code'), activeFilename ? (projectFiles[activeFilename] || "") : "");
+
+    if (editor) {
+        if (activeFilename) {
+            editor.value = projectFiles[activeFilename] || "";
+            editor.placeholder = "Write code here...";
+        } else {
+            editor.value = "";
+            editor.placeholder = "Workspace is empty. Click '+ Add File' tab above to create a new file.";
+        }
+        lastSavedCode = editor.value;
+        lastSyncedCode = editor.value;
+    }
+    renderFileTabs();
+
+    const closeLogBtn = document.getElementById("closeExecOutputBtn");
+    if (closeLogBtn) {
+        closeLogBtn.addEventListener("click", () => {
+            const panel = document.getElementById("execOutputPanel");
+            if (panel) panel.style.display = "none";
+        });
     }
 
     initializeChat();
     initializeAutoSave();
     initializeSubmitBtn();
+    initializeCheckCodeBtn();
 
     if (TEAM_ID) {
         document.body.classList.add("team-mode");
@@ -294,6 +506,7 @@ function revealWorkspace(starterCode, challengeData) {
         setupTeamWorkspace();
     }
 }
+
 
 // ---------------------------------------------------------------------------
 // Countdown timer
@@ -445,21 +658,18 @@ async function pollChatHistory() {
         const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/messages`);
         if (!res.ok) return;
         const messages = await res.json();
-        // Only append messages we haven't seen yet (by id)
+        const currentUserId = currentUser?.user_id || currentUser?.id;
+        // Only append messages we haven't seen yet (by id) that belong to current user
         messages.forEach(m => {
             if (m.id > lastKnownChatMsgId) {
                 lastKnownChatMsgId = m.id;
-                // Skip user messages that we already showed optimistically from
-                // our own send.  Show teammate user messages and ALL assistant
-                // messages (Gemini replies).
+                // In separate per-member mode, skip messages belonging to other members
+                if (m.user_id && m.user_id !== currentUserId) {
+                    return;
+                }
                 if (m.role === "assistant") {
                     setTypingIndicator(false);
                     appendChatBubble("assistant", m.content);
-                } else if (m.role === "user" && m.user_id !== currentUser.user_id) {
-                    // teammate's message — already visible via WS chat_message
-                    // broadcast, but render here as a safety net if WS was slow.
-                    // Dedup check: skip if already visible (look for a matching bubble).
-                    // Simple approach: just skip — the WS delivery is fast enough.
                 }
             }
         });
@@ -697,6 +907,10 @@ function initializeAutoSave() {
 
     // Persist to sessionStorage on every keystroke (cheap, local only)
     editor.addEventListener("input", () => {
+        if (activeFilename) {
+            projectFiles[activeFilename] = editor.value;
+            sessionStorage.setItem(ssKey('project_files'), JSON.stringify(projectFiles));
+        }
         sessionStorage.setItem(ssKey('code'), editor.value);
     });
 }
@@ -705,12 +919,17 @@ async function saveCode() {
     const editor = document.getElementById("codeEditor");
     if (!editor || !sessionId || isSubmitted) return;
 
-    const code = editor.value;
-    if (code === lastSavedCode) return;   // no change, skip network call
+    if (activeFilename) {
+        projectFiles[activeFilename] = editor.value;
+    }
 
     setSaveStatus("Saving…");
     try {
-        const payload = { code };
+        const payload = {
+            filename: activeFilename,
+            code: editor.value,
+            files: projectFiles,
+        };
         if (TEAM_ID) payload.actor_user_id = currentUser.user_id;
 
         const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/save-code`, {
@@ -719,7 +938,7 @@ async function saveCode() {
             body: JSON.stringify(payload),
         });
         if (res.ok) {
-            lastSavedCode = code;
+            lastSavedCode = editor.value;
             setSaveStatus("Saved ✓");
         } else {
             setSaveStatus("Save failed");
@@ -732,6 +951,91 @@ async function saveCode() {
 function setSaveStatus(msg) {
     const el = document.getElementById("saveStatus");
     if (el) el.textContent = msg;
+}
+
+// ---------------------------------------------------------------------------
+// Compiler Check (Submit Code)
+// ---------------------------------------------------------------------------
+function initializeCheckCodeBtn() {
+    const checkCodeBtn = document.getElementById("checkCodeBtn");
+    const closeCompilerBtn = document.getElementById("closeCompilerOutputBtn");
+
+    if (closeCompilerBtn) {
+        closeCompilerBtn.addEventListener("click", () => {
+            const panel = document.getElementById("compilerOutputPanel");
+            if (panel) panel.style.display = "none";
+        });
+    }
+
+    if (!checkCodeBtn) return;
+
+    checkCodeBtn.addEventListener("click", async () => {
+        if (!sessionId) {
+            alert("No active session. Please start the challenge first.");
+            return;
+        }
+
+        checkCodeBtn.disabled = true;
+        const originalHtml = checkCodeBtn.innerHTML;
+        checkCodeBtn.innerHTML = `⚡ Analyzing code...`;
+
+        const panel = document.getElementById("compilerOutputPanel");
+        const content = document.getElementById("compilerOutputContent");
+        if (panel) panel.style.display = "block";
+        if (content) {
+            content.innerHTML = `<div style="color: #94a3b8; font-style: italic;">Running compiler & static analysis check against task description...</div>`;
+        }
+
+        try {
+            await saveCode();
+            const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/check-code`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                if (content) {
+                    content.innerHTML = `<div class="compiler-error-item"><span class="compiler-error-msg">Check failed: ${escapeHtml(err.detail || res.statusText)}</span></div>`;
+                }
+                return;
+            }
+
+            const data = await res.json();
+            renderCompilerOutput(data);
+        } catch (err) {
+            if (content) {
+                content.innerHTML = `<div class="compiler-error-item"><span class="compiler-error-msg">Network error: ${escapeHtml(err.message)}</span></div>`;
+            }
+        } finally {
+            checkCodeBtn.disabled = false;
+            checkCodeBtn.innerHTML = originalHtml;
+        }
+    });
+}
+
+function renderCompilerOutput(data) {
+    const panel = document.getElementById("compilerOutputPanel");
+    const content = document.getElementById("compilerOutputContent");
+    if (!panel || !content) return;
+
+    panel.style.display = "block";
+    panel.scrollIntoView({ behavior: "smooth" });
+
+    const passed = !!data.passed;
+    const output = passed ? data.stdout : (data.stderr || data.stdout);
+    const exitCode = data.exit_code !== undefined ? data.exit_code : (passed ? 0 : 1);
+    const statusColor = passed ? "#4ade80" : "#f87171";
+    const statusBadge = passed ? "✓ Exit code 0" : `✗ Exit code ${exitCode}`;
+
+    content.innerHTML = `
+        <div class="terminal-output" style="margin-bottom: 4px;">
+            <div style="font-size: 0.85rem; font-weight: 600; color: ${statusColor}; margin-bottom: 8px;">
+                ${statusBadge}
+            </div>
+            <pre style="margin: 0; padding: 12px 14px; background: #090d16; color: ${passed ? '#f8fafc' : '#fca5a5'}; border-radius: 6px; white-space: pre-wrap; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; max-height: 250px; overflow-y: auto;">${escapeHtml(output || '(no output)')}</pre>
+        </div>
+    `;
 }
 
 // ---------------------------------------------------------------------------
@@ -780,12 +1084,27 @@ function initializeSubmitBtn() {
             }
 
             const data = await res.json();
+
+            if (data.passed === false) {
+                const execPanel = document.getElementById("execOutputPanel");
+                const execText = document.getElementById("execOutputText");
+                if (execPanel && execText) {
+                    execText.textContent = `=== EXECUTION FAILED ===\nExit Code: ${data.exit_code}\nDuration: ${data.duration_ms}ms\n\n--- STDOUT ---\n${data.stdout || "(none)"}\n\n--- STDERR ---\n${data.stderr || "(none)"}`;
+                    execPanel.style.display = "block";
+                    execPanel.scrollIntoView({ behavior: "smooth" });
+                }
+                alert(data.detail || "Execution check failed! Please fix all project errors and try again.");
+                return;
+            }
+
             isSubmitted = true;
 
             // Clear session state
             sessionStorage.removeItem(ssKey('session_id'));
             sessionStorage.removeItem(ssKey('team_id'));
             sessionStorage.removeItem(ssKey('code'));
+            sessionStorage.removeItem(ssKey('project_files'));
+            sessionStorage.removeItem(ssKey('active_filename'));
             sessionStorage.removeItem(ssKey('timer'));
             if (timerInterval)      clearInterval(timerInterval);
             if (saveInterval)       clearInterval(saveInterval);
@@ -806,6 +1125,7 @@ function initializeSubmitBtn() {
         }
     });
 }
+
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -996,15 +1316,16 @@ function handleTeamWsMessage(msg) {
             break;
 
         case "chat_message":
-            // A teammate sent a message — show it in the chat panel with teammate styling.
-            // We skip our own user_id because we already showed it optimistically.
-            if (msg.user_id !== currentUser.user_id) {
-                appendChatBubble("teammate", msg.message, msg.name);
-            }
+            // In separate per-member mode, each member only renders their own conversation thread.
+            // Teammates' chat messages are not rendered in this member's private assistant chat thread.
             break;
 
         case "assistant_reply":
             setTypingIndicator(false);
+            const currentUserId = currentUser?.user_id || currentUser?.id;
+            if (msg.user_id && msg.user_id !== currentUserId) {
+                break;
+            }
             if (msg.msg_id && msg.msg_id <= lastKnownChatMsgId) {
                 break;
             }
@@ -1068,6 +1389,49 @@ function handleTeamWsMessage(msg) {
                 selection_end: msg.selection_end
             };
             renderRemoteCursors();
+            break;
+
+        case "file_switch":
+            if (msg.user_id === currentUser.user_id) break;
+            remoteFileLocations[msg.user_id] = {
+                filename: msg.filename,
+                name: msg.name,
+                user_id: msg.user_id
+            };
+            renderFileTabs();
+            break;
+
+        case "file_create":
+            if (msg.user_id === currentUser.user_id) break;
+            if (msg.filename) {
+                projectFiles[msg.filename] = msg.content || "";
+                sessionStorage.setItem(ssKey('project_files'), JSON.stringify(projectFiles));
+                renderFileTabs();
+                showToast(`📄 ${msg.name || "A teammate"} created ${msg.filename}`);
+            }
+            break;
+
+        case "code_update":
+            if (msg.user_id === currentUser.user_id) break;
+            if (msg.current_code) {
+                try {
+                    const parsed = JSON.parse(msg.current_code);
+                    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+                        projectFiles = parsed;
+                        sessionStorage.setItem(ssKey('project_files'), JSON.stringify(projectFiles));
+                        if (!activeFilename || !(activeFilename in projectFiles)) {
+                            const filenames = Object.keys(projectFiles);
+                            activeFilename = filenames[0] || null;
+                            if (activeFilename) {
+                                sessionStorage.setItem(ssKey('active_filename'), activeFilename);
+                                const editor = document.getElementById("codeEditor");
+                                if (editor) editor.value = projectFiles[activeFilename] || "";
+                            }
+                        }
+                        renderFileTabs();
+                    }
+                } catch (e) { }
+            }
             break;
 
         case "prompt_typing":

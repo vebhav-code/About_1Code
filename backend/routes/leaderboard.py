@@ -38,19 +38,6 @@ def get_leaderboard(
     Ordered by highest total score first, then by earlier submission time.
     Requires `challenge_slug`.
     """
-    if not challenge_slug or not challenge_slug.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="challenge_slug is required"
-        )
-
-    challenge = db.query(Challenge).filter(Challenge.slug == challenge_slug.strip()).first()
-    if not challenge:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Challenge '{challenge_slug}' not found"
-        )
-
     target_mode = mode.lower() if mode else "individual"
 
     query = db.query(
@@ -68,9 +55,16 @@ def get_leaderboard(
         Challenge, Submission.challenge_id == Challenge.id
     ).outerjoin(
         User, Submission.user_id == User.id
-    ).filter(
-        Submission.challenge_id == challenge.id
     )
+
+    if challenge_slug and challenge_slug.strip():
+        challenge = db.query(Challenge).filter(Challenge.slug == challenge_slug.strip()).first()
+        if not challenge:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Challenge '{challenge_slug}' not found"
+            )
+        query = query.filter(Submission.challenge_id == challenge.id)
 
     if target_mode == "team":
         query = query.filter(Submission.team_id.isnot(None))
@@ -189,27 +183,23 @@ _STATS_CACHE_TTL = 20.0  # seconds
 @router.get("/stats", response_model=List[ChallengeStatsResponse])
 def get_leaderboard_stats(challenge_slug: Optional[str] = None, db: Session = Depends(get_db)):
     """
-    Get statistics for a specific challenge (requires challenge_slug).
+    Get statistics for a specific challenge or across all challenges if challenge_slug is omitted.
     """
-    if not challenge_slug or not challenge_slug.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="challenge_slug is required"
-        )
-
-    slug_key = challenge_slug.strip()
+    slug_key = challenge_slug.strip() if (challenge_slug and challenge_slug.strip()) else "__all__"
     now = time.time()
     if slug_key in _stats_cache:
         cached_data, expiry = _stats_cache[slug_key]
         if now < expiry:
             return cached_data
 
-    challenge = db.query(Challenge).filter(Challenge.slug == slug_key).first()
-    if not challenge:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Challenge '{challenge_slug}' not found",
-        )
+    target_challenge = None
+    if challenge_slug and challenge_slug.strip():
+        target_challenge = db.query(Challenge).filter(Challenge.slug == challenge_slug.strip()).first()
+        if not target_challenge:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Challenge '{challenge_slug}' not found",
+            )
 
     query = db.query(
         Challenge.title.label("challenge_name"),
@@ -222,10 +212,12 @@ def get_leaderboard_stats(challenge_slug: Optional[str] = None, db: Session = De
         Submission, Submission.challenge_id == Challenge.id
     ).join(
         Evaluation, Evaluation.submission_id == Submission.id
-    ).filter(
-        Challenge.id == challenge.id
-    ).group_by(Challenge.id)
+    )
 
+    if target_challenge:
+        query = query.filter(Challenge.id == target_challenge.id)
+
+    query = query.group_by(Challenge.id)
     result = query.all()
 
     stats_list = []
@@ -242,16 +234,30 @@ def get_leaderboard_stats(challenge_slug: Optional[str] = None, db: Session = De
         )
 
     if not stats_list:
-        stats_list = [
-            ChallengeStatsResponse(
-                total_participants=0,
-                average_score=0.0,
-                highest_score=0,
-                lowest_score=0,
-                challenge_name=challenge.title,
-                challenge_slug=challenge.slug
-            )
-        ]
+        if target_challenge:
+            stats_list = [
+                ChallengeStatsResponse(
+                    total_participants=0,
+                    average_score=0.0,
+                    highest_score=0,
+                    lowest_score=0,
+                    challenge_name=target_challenge.title,
+                    challenge_slug=target_challenge.slug
+                )
+            ]
+        else:
+            all_challenges = db.query(Challenge).filter(Challenge.is_active.is_(True)).all()
+            for ch in all_challenges:
+                stats_list.append(
+                    ChallengeStatsResponse(
+                        total_participants=0,
+                        average_score=0.0,
+                        highest_score=0,
+                        lowest_score=0,
+                        challenge_name=ch.title,
+                        challenge_slug=ch.slug
+                    )
+                )
 
     _stats_cache[slug_key] = (stats_list, now + _STATS_CACHE_TTL)
     return stats_list

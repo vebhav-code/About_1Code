@@ -4,11 +4,13 @@ WebSocket channel for team presence, code sync, voice signaling, and live notifi
 """
 
 import asyncio
+import json
 import logging
 from typing import Dict, Set, Tuple
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 from database.connection import SessionLocal
+from models.session import ChallengeSession
 from models.team import Team
 from models.team_member import TeamMember
 
@@ -17,9 +19,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/teams", tags=["team-ws"])
 
 # In-memory registry: team_id -> set of (user_id, WebSocket)
-# NOTE: This in-memory connection registry works for single-process deployments.
-# If the application is ever horizontally scaled across multiple backend workers/instances,
-# this must be replaced/backed by a pub/sub mechanism (e.g., Redis Pub/Sub).
 _team_connections: Dict[int, Set[Tuple[int, WebSocket]]] = {}
 
 
@@ -35,11 +34,6 @@ async def _send_json_safe(ws: WebSocket, data: dict):
 
 
 def broadcast_to_team(team_id: int, message: dict, exclude_user_id: int = None):
-    """
-    Internal helper to broadcast a message to all connected members of a team.
-    Can be safely called from HTTP routes or background tasks without failing
-    if WebSocket delivery errors out.
-    """
     sockets = list(_get_team_sockets(team_id))
     if not sockets:
         return
@@ -57,7 +51,6 @@ def broadcast_to_team(team_id: int, message: dict, exclude_user_id: int = None):
         loop = asyncio.get_running_loop()
         loop.create_task(_do_broadcast())
     except RuntimeError:
-        # If running in a synchronous thread without a running loop
         asyncio.run(_do_broadcast())
 
 
@@ -103,9 +96,36 @@ async def team_websocket_endpoint(websocket: WebSocket, team_id: int, user_id: i
             if not msg_type:
                 continue
 
-            # Code sync / update
-            if msg_type in ("code-update", "code_sync", "code_diff", "cursor_move", "prompt_typing"):
+            # Code sync / update per filename
+            if msg_type in ("code-update", "code_sync", "code_diff", "cursor_move", "prompt_typing", "file_switch"):
+                if msg_type in ("code-update", "code_sync") and data.get("code") is not None:
+                    filename = data.get("filename")
+                    code = data.get("code")
+                    try:
+                        db_ws = SessionLocal()
+                        session = db_ws.query(ChallengeSession).filter(
+                            ChallengeSession.team_id == team_id,
+                            ChallengeSession.submitted_at.is_(None)
+                        ).first()
+                        if session:
+                            if filename:
+                                try:
+                                    files_dict = json.loads(session.current_code or "{}")
+                                    if not isinstance(files_dict, dict):
+                                        files_dict = {}
+                                except Exception:
+                                    files_dict = {}
+                                files_dict[filename] = code
+                                session.current_code = json.dumps(files_dict)
+                            else:
+                                session.current_code = code
+                            db_ws.commit()
+                        db_ws.close()
+                    except Exception as e:
+                        logger.warning(f"Failed to persist live WS code for team {team_id}: {e}")
+
                 broadcast_to_team(team_id=team_id, message=data, exclude_user_id=user_id)
+
 
             # Voice signaling (targeted)
             elif msg_type in ("voice-offer", "voice-answer", "voice-ice"):
