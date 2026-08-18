@@ -346,6 +346,11 @@
                 btn.disabled = false;
                 return;
               }
+              const data = await res.json();
+              if (accept && data.team_id && data.challenge_slug) {
+                window.location.href = `team-lobby.html?slug=${encodeURIComponent(data.challenge_slug)}&team_id=${data.team_id}`;
+                return;
+              }
               loadPendingInvites();
             } catch (err) {
               alert("Network error");

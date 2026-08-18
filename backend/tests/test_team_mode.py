@@ -20,14 +20,12 @@ def setup_module():
         ch = db.query(Challenge).filter(Challenge.slug == slug).first()
         if ch:
             cid = ch.id
-            db.execute(text("DELETE FROM submission_files WHERE submission_id IN (SELECT id FROM submissions WHERE challenge_id = :cid)"), {"cid": cid})
             db.execute(text("DELETE FROM evaluations WHERE submission_id IN (SELECT id FROM submissions WHERE challenge_id = :cid)"), {"cid": cid})
             db.execute(text("DELETE FROM submissions WHERE challenge_id = :cid"), {"cid": cid})
             db.execute(text("DELETE FROM chat_messages WHERE session_id IN (SELECT id FROM challenge_sessions WHERE challenge_id = :cid)"), {"cid": cid})
             db.execute(text("DELETE FROM challenge_sessions WHERE challenge_id = :cid"), {"cid": cid})
             db.execute(text("DELETE FROM team_members WHERE team_id IN (SELECT id FROM teams WHERE challenge_id = :cid)"), {"cid": cid})
             db.execute(text("DELETE FROM teams WHERE challenge_id = :cid"), {"cid": cid})
-            db.execute(text("DELETE FROM challenge_files WHERE challenge_id = :cid"), {"cid": cid})
             db.execute(text("DELETE FROM challenges WHERE id = :cid"), {"cid": cid})
             db.commit()
     db.close()

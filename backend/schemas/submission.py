@@ -1,6 +1,6 @@
 """
 schemas/submission.py
-Pydantic schemas for submissions and upload responses.
+Pydantic schemas for submissions and approach evaluation responses.
 """
 
 from datetime import datetime
@@ -17,8 +17,7 @@ class SubmissionResponse(BaseModel):
 class SubmissionOut(BaseModel):
     id: int
     challenge_id: int
-    fixed_project_path: str
-    debug_log_path: str
+    approach_text: str = ""
     late: bool = False
     submitted_at: datetime
 

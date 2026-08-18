@@ -1,18 +1,16 @@
 """
 services/gemini_service.py
-Gemini AI integration for extracting, reading, and evaluating challenge submissions.
+Gemini AI integration for evaluating free-text approach architecture submissions
+and providing a sounding-board assistant for contestants.
 Uses the current google.genai SDK (google-genai package).
 """
 
 import os
 import json
-import zipfile
-import shutil
 import asyncio
 import logging
 import time
 import re
-from pathlib import Path
 from fastapi import HTTPException, status
 
 logger = logging.getLogger(__name__)
@@ -89,9 +87,6 @@ def _call_gemini(client, prompt: str, response_mime_type: str = "application/jso
                         delay = float(retry_match.group(1))
                     except ValueError:
                         pass
-                # NOTE: time.sleep(delay) is safe here because _call_gemini() is called inside a
-                # worker thread via asyncio.to_thread(). It only blocks that worker thread,
-                # leaving the asyncio event loop completely free to handle other requests and WebSocket messages.
                 logger.warning(f"Gemini API returned 429 rate limit. Retrying after sleeping {delay}s in worker thread.")
                 time.sleep(delay)
                 continue
@@ -100,66 +95,32 @@ def _call_gemini(client, prompt: str, response_mime_type: str = "application/jso
             raise
 
 
-def extract_zip(zip_path: Path) -> Path:
-    """Extract a ZIP archive into an 'extracted' sub-directory and return its path."""
-    extract_to = zip_path.parent / "extracted"
-    extract_to.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(zip_path, "r") as zf:
-        zf.extractall(extract_to)
-    return extract_to
-
-
-def cleanup_extracted(extract_dir: Path):
-    """Delete the temporary extracted directory."""
-    if extract_dir and extract_dir.exists() and extract_dir.is_dir():
-        shutil.rmtree(extract_dir)
-
-
-def read_source_files(directory: Path) -> str:
-    """Recursively read all UTF-8 text files, skipping binaries and build folders."""
-    EXCLUDE_DIRS = {"node_modules", ".git", "__pycache__", "venv", ".venv", "dist", "build"}
-    EXCLUDE_EXT  = {".zip", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf",
-                    ".gz", ".tar", ".bin", ".exe", ".lock"}
-
-    parts = []
-    for path in sorted(directory.rglob("*")):
-        if not path.is_file():
-            continue
-        if any(part in EXCLUDE_DIRS for part in path.parts):
-            continue
-        if path.suffix.lower() in EXCLUDE_EXT:
-            continue
+def _parse_constraints_list(raw_constraints) -> list[str]:
+    if not raw_constraints:
+        return []
+    if isinstance(raw_constraints, list):
+        return raw_constraints
+    if isinstance(raw_constraints, str):
         try:
-            content = path.read_text(encoding="utf-8")
-            rel = path.relative_to(directory).as_posix()
-            parts.append(f"File: {rel}\n{'-'*40}\n{content}\n{'='*40}\n")
-        except (UnicodeDecodeError, PermissionError):
-            continue  # skip binary / unreadable files
-
-    return "\n".join(parts) if parts else "(no readable source files found)"
-
-
-def read_official_solution(challenge) -> str:
-    if hasattr(challenge, "files") and challenge.files:
-        parts = []
-        for f in sorted(challenge.files, key=lambda x: x.file_order):
-            parts.append(f"File: {f.filename}\n{'-'*40}\n{f.solution_content}\n{'='*40}\n")
-        return "\n".join(parts)
-    return challenge.official_solution or "No official solution reference is available for this challenge."
+            parsed = json.loads(raw_constraints)
+            return parsed if isinstance(parsed, list) else []
+        except Exception:
+            return []
+    return []
 
 
 async def evaluate_submission_with_gemini(
-    submission,
+    approach_text: str,
     challenge,
-    db_log_content: str,
-    user_code_content: str,
-    official_solution_content: str,
+    chat_transcript: str = "(no chat messages)",
+    official_solution_content: str = "",
     hypothesis_content: str = "(no hypothesis provided)",
     is_late: bool = False,
     elapsed_minutes: float = 0.0,
 ) -> dict:
     """
-    Build an evaluation prompt, call Gemini, and parse the structured JSON response.
+    Build an evaluation prompt for an Approach Mode submission, call Gemini,
+    and parse the structured JSON response.
     Returns the evaluation dict.
     """
     client = _get_client()
@@ -167,69 +128,65 @@ async def evaluate_submission_with_gemini(
     time_limit = getattr(challenge, "time_limit", 45) or 45
     late_note = (
         f"\nNote: this submission was completed {elapsed_minutes:.0f} minutes after the {time_limit}-minute limit — "
-        f"factor this into your overall_feedback if relevant, but do not penalize the numeric scores for lateness alone."
+        f"factor this into your overall_feedback if relevant, but do not penalize numeric scores for lateness alone."
         if is_late
         else ""
     )
 
-    if user_code_content and user_code_content.strip().startswith("{"):
-        try:
-            files_map = json.loads(user_code_content)
-            if isinstance(files_map, dict):
-                parts = []
-                for fname, fcontent in files_map.items():
-                    parts.append(f"File: {fname}\n{'-'*40}\n{fcontent}\n{'='*40}\n")
-                user_code_content = "\n".join(parts)
-        except Exception:
-            pass
+    constraints_list = _parse_constraints_list(getattr(challenge, "constraints", None))
+    if constraints_list:
+        constraints_formatted = "\n".join(f"{idx+1}. {c}" for idx, c in enumerate(constraints_list))
+    else:
+        constraints_formatted = "(no explicit constraints specified)"
 
-    prompt = f"""
-You are an expert AI code reviewer and grading agent for 1Code, an AI-native debugging platform.
-Evaluate the user's submission and return ONLY a JSON object — no markdown, no extra text.
+    ref_notes = official_solution_content.strip() or challenge.official_solution or "No reference notes provided."
+
+    prompt = f"""You are an expert software architect and grading agent for 1Code.
+Evaluate the user's architectural approach write-up and return ONLY a JSON object — no markdown fences, no extra text.
 
 ### CHALLENGE CONTEXT
 - Title: {challenge.title}
 - Slug: {challenge.slug}
+- Category: {getattr(challenge, 'category', 'General')}
 - Difficulty: {challenge.difficulty}
-- Scenario: {challenge.scenario or "No description provided."}{late_note}
+- Scenario: {challenge.scenario or "No scenario provided."}{late_note}
 
-### OFFICIAL SOLUTION (expected correct code)
-{official_solution_content}
+### STATED REQUIREMENTS / CONSTRAINTS
+{constraints_formatted}
 
-### USER'S INITIAL HYPOTHESIS (written before seeing any code)
+### REFERENCE APPROACH NOTES (Grading calibration context — one possible valid approach, not the only correct answer. Do not penalize taking a different valid route):
+{ref_notes}
+
+### USER'S INITIAL HYPOTHESIS / FRAMING (written before developing full approach)
 {hypothesis_content}
 
-### USER'S FIXED PROJECT SOURCE CODE
-{user_code_content}
+### USER'S SUBMITTED ARCHITECTURAL APPROACH
+{approach_text if approach_text.strip() else "(No approach write-up provided)"}
 
-
-### USER'S DEBUG LOG (debug_log.txt)
-{db_log_content}
+### AI Sounding-Board Discussion Transcript:
+{chat_transcript}
 
 ### SCORING RUBRIC (Total 100 marks)
-1. hypothesis      — max 20 marks  (quality of initial hypotheses before viewing code)
-2. prompt_quality  — max 25 marks  (clarity, context, and structure of AI prompts)
-3. ai_collaboration— max 20 marks  (how well the user guided and verified AI responses)
-4. code_correctness— max 25 marks  (final fix compared to official solution)
-5. problem_solving — max 10 marks  (root cause identification and verification steps)
+1. optimization      — max 25 marks  (how efficient and well-optimized the proposed architecture is against each stated constraint)
+2. open_source_usage — max 25 marks  (appropriate, specific selection and integration of real open-source tools, libraries, or models)
+3. topic_knowledge   — max 25 marks  (demonstrated depth of domain understanding and architectural tradeoffs)
+4. prompt_quality    — max 25 marks  (clarity, structure, coherence, and completeness of the write-up itself)
 
 ### REQUIRED JSON OUTPUT FORMAT
 {{
-  "hypothesis": <int 0-20>,
+  "optimization": <int 0-25>,
+  "open_source_usage": <int 0-25>,
+  "topic_knowledge": <int 0-25>,
   "prompt_quality": <int 0-25>,
-  "ai_collaboration": <int 0-20>,
-  "code_correctness": <int 0-25>,
-  "problem_solving": <int 0-10>,
   "total_score": <int 0-100>,
   "strengths": ["<strength 1>", "<strength 2>"],
   "improvements": ["<improvement 1>", "<improvement 2>"],
-  "overall_feedback": "<2-4 sentence summary>"
-}}
-"""
+  "overall_feedback": "<2-4 sentence summary of evaluation>"
+}}"""
 
     try:
         start_time = time.perf_counter()
-        logger.info(f"Starting Gemini evaluation request (prompt length: {len(prompt)})...")
+        logger.info(f"Starting Gemini approach evaluation request (prompt length: {len(prompt)})...")
         text = await asyncio.to_thread(_call_gemini, client, prompt)
         duration_ms = (time.perf_counter() - start_time) * 1000
         logger.info(f"Gemini evaluation call completed in {duration_ms:.2f} ms")
@@ -249,10 +206,8 @@ Evaluate the user's submission and return ONLY a JSON object — no markdown, no
             detail=f"Gemini API error: {str(e)}"
         )
 
-    # Ensure all required keys exist with safe defaults
-    int_keys   = ["hypothesis", "prompt_quality", "ai_collaboration",
-                   "code_correctness", "problem_solving", "total_score"]
-    list_keys  = ["strengths", "improvements"]
+    int_keys = ["optimization", "open_source_usage", "topic_knowledge", "prompt_quality", "total_score"]
+    list_keys = ["strengths", "improvements"]
 
     for k in int_keys:
         result.setdefault(k, 0)
@@ -268,45 +223,50 @@ Evaluate the user's submission and return ONLY a JSON object — no markdown, no
 
 async def chat_with_gemini(
     scenario: str,
-    current_code: str,
+    current_approach: str,
     message: str,
+    constraints: list[str] | None = None,
     history: list[dict] | None = None,
 ) -> str:
     """
-    Helper (non-grading) Gemini call using a pairing-partner persona.
-    Guides the user through debugging without handing them the full solution.
+    Helper Gemini call using a discussion/sounding-board partner persona.
+    Helps the contestant think through tradeoffs and constraints without writing their solution for them.
     Returns a plain-text reply string.
     """
     client = _get_client()
 
-    # Truncate code context to avoid token limits while still being useful
-    code_preview = current_code[:3000] + "\n...(truncated)" if len(current_code) > 3000 else current_code
+    approach_preview = current_approach[:3000] + "\n...(truncated)" if len(current_approach) > 3000 else current_approach
+
+    constraints_text = ""
+    if constraints:
+        constraints_text = "\nCONSTRAINTS TO CONSIDER:\n" + "\n".join(f"- {c}" for c in constraints)
 
     history_text = ""
     if history:
         turns = [f"{'User' if h['role'] == 'user' else 'Assistant'}: {h['content']}" for h in history[-10:]]
         history_text = "\n\nPrevious conversation:\n" + "\n".join(turns)
 
-    prompt = f"""You are a helpful coding assistant and expert debugging partner for 1Code.
-The user is working on the following challenge:
+    prompt = f"""You are a helpful software architecture sounding board and technical mentor for 1Code contestants.
+The contestant is working on an architectural approach challenge:
 
 SCENARIO:
-{scenario}
+{scenario}{constraints_text}
 
-THEIR CURRENT CODE:
-{code_preview if code_preview.strip() else "(No code written yet)"}
+THEIR CURRENT DRAFT APPROACH:
+{approach_preview if approach_preview.strip() else "(No approach written yet)"}
 {history_text}
 
-Current message: {message}
+Current contestant message: {message}
 
-Respond as a real pairing partner would: ask clarifying questions, suggest what to look for,
-explain concepts clearly. Do NOT hand them the complete fixed solution outright — guide them
-to find and understand the issue themselves. Keep your response concise and conversational.
-Plain text only, no markdown formatting."""
+Respond as an expert systems architect and sounding-board partner:
+- Ask clarifying questions about their proposed components or tradeoffs.
+- Discuss relevant open-source libraries, frameworks, or design patterns they might consider.
+- Do NOT write out the full approach solution for them. Guide them to refine and detail their own plan.
+Keep your response concise, conversational, and constructive. Plain text only, no markdown formatting."""
 
     try:
         start_time = time.perf_counter()
-        logger.info(f"Starting Gemini chat request (message length: {len(message)})...")
+        logger.info(f"Starting Gemini architecture chat request (message length: {len(message)})...")
         reply = await asyncio.to_thread(_call_gemini, client, prompt, response_mime_type="text/plain")
         duration_ms = (time.perf_counter() - start_time) * 1000
         logger.info(f"Gemini chat call completed in {duration_ms:.2f} ms")
@@ -318,61 +278,3 @@ Plain text only, no markdown formatting."""
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Gemini chat error: {str(e)}"
         )
-
-
-async def check_code_for_errors(task_description: str, files: dict[str, str]) -> dict:
-    """
-    Compiler-style static analyzer check using Gemini.
-    Evaluates project files against the task description for execution-breaking errors.
-    """
-    client = _get_client()
-    files_text = "\n\n".join(f"--- {name} ---\n{content}" for name, content in files.items()) if files else "(No files created yet)"
-
-    prompt = f"""You are acting as a strict compiler and static analyzer, not a conversational assistant. Review the following files against the task below.
-
-TASK: {task_description}
-
-FILES:
-{files_text}
-
-Report every real error you find — syntax errors, undefined references, type mismatches, obvious logic errors that would cause a runtime failure. Do NOT give general code-quality feedback or style suggestions — only things that would actually break execution or clearly fail the task.
-
-Respond with ONLY valid JSON, no markdown fences:
-{{
-  "errors": [
-    {{"file": "<filename>", "location": "<function/line reference if identifiable>", "message": "<what's wrong>"}}
-  ],
-  "clean": <true if no errors found, false otherwise>
-}}"""
-
-    try:
-        start_time = time.perf_counter()
-        logger.info("Starting Gemini check_code_for_errors request...")
-        text = await asyncio.to_thread(_call_gemini, client, prompt)
-        duration_ms = (time.perf_counter() - start_time) * 1000
-        logger.info(f"Gemini check_code_for_errors call completed in {duration_ms:.2f} ms")
-        result = _parse_json_response(text)
-    except json.JSONDecodeError as je:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Gemini returned invalid JSON: {je}. Raw: {text[:500]}"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Gemini API check code error: {str(e)}"
-        )
-
-    if not isinstance(result, dict):
-        result = {"errors": [], "clean": True}
-
-    if "errors" not in result or not isinstance(result["errors"], list):
-        result["errors"] = []
-
-    if "clean" not in result:
-        result["clean"] = len(result["errors"]) == 0
-
-    return result
-

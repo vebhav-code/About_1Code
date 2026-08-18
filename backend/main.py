@@ -1,7 +1,9 @@
+import logging
 import os
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from database.connection import engine, Base, SessionLocal
@@ -20,9 +22,7 @@ from routes.stats import router as stats_router
 
 # Register models to ensure they are loaded into Base metadata
 import models.challenge
-import models.challenge_file
 import models.submission
-import models.submission_file
 import models.evaluation
 import models.user
 import models.session
@@ -118,6 +118,17 @@ app.add_middleware(
 
 # Enable response compression for JSON/HTML responses >= 500 bytes
 app.add_middleware(GZipMiddleware, minimum_size=500)
+
+logger = logging.getLogger(__name__)
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled server error processing %s %s: %s", request.method, request.url.path, exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {str(exc)}"},
+    )
 
 
 # Custom StaticFiles subclass to add Cache-Control headers (max-age=3600)

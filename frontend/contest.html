@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="1Code Authentication Debug Challenge — fix a real JWT auth bug using AI tools in a live coding workspace." />
+    <meta name="description" content="1Code Architecture Challenge — design and architect solutions for real-world scenarios using AI assistance." />
 
     <title>1Code | Contest</title>
 
@@ -49,12 +49,12 @@
     <!-- ========================================= -->
     <section class="contest-hero">
       <div class="contest-container">
-        <span class="pill" id="challengePill"> Authentication Challenge </span>
+        <span class="pill" id="challengePill"> Architecture Challenge </span>
 
-        <h1 id="challengeTitle">Authentication Debug Challenge</h1>
+        <h1 id="challengeTitle">Architecture Challenge</h1>
 
         <p id="challengeDesc">
-          Debug a real-world authentication issue using your favourite AI tool
+          Architect a real-world solution given technical constraints using AI assistance
           and compete with other developers.
         </p>
 
@@ -81,29 +81,32 @@
     <section class="contest-content">
       <div class="contest-container">
         <div class="contest-grid">
-          <!-- LEFT: Scenario + Rules -->
+          <!-- LEFT: Scenario + Constraints + Rules -->
           <div class="contest-left">
             <div class="glass-card contest-card">
               <h2>📄 Scenario</h2>
               <p class="scenario-text" id="scenarioText">
-                A user successfully logs into the application. However, after
-                approximately <strong>40 seconds</strong>, they are automatically
-                logged out. No error message appears. The backend is running
-                successfully and the database contains the correct user
-                credentials. Your task is to identify the root cause, debug the
-                issue and fix it in the editor below.
+                Loading challenge scenario...
               </p>
+            </div>
+
+            <!-- Stated Constraints Card -->
+            <div class="glass-card contest-card" id="constraintsCard">
+              <h2>🎯 Technical Requirements & Constraints</h2>
+              <ul class="rule-list" id="constraintsList" style="margin-top: 10px;">
+                <li>Loading constraints...</li>
+              </ul>
             </div>
 
             <div class="glass-card contest-card">
               <h2>📋 Contest Rules</h2>
               <ul class="rule-list">
-                <li>✅ AI tools are allowed — use the chat panel on the right.</li>
-                <li>✅ Only ONE official submission is allowed.</li>
-                <li>✅ Fix the bug directly in the code editor.</li>
-                <li>✅ Your code and chat are saved automatically.</li>
+                <li>✅ AI tools are allowed — use the chat panel on the right as a sounding board.</li>
+                <li>✅ Only ONE official submission is allowed per user/team.</li>
+                <li>✅ Write your architectural approach directly in the approach editor.</li>
+                <li>✅ Focus on optimization, open-source tool choices, and domain knowledge depth.</li>
+                <li>✅ Your approach draft and chat are saved automatically.</li>
                 <li>✅ Click <strong>Submit for Grading</strong> when ready.</li>
-                <li>✅ Submissions after the timer ends will not be accepted.</li>
               </ul>
             </div>
           </div>
@@ -119,12 +122,8 @@
             <div class="glass-card contest-card">
               <h2>📌 Contest Information</h2>
               <div class="info-row">
-                <span>Challenge ID</span>
-                <strong>AUTH-001</strong>
-              </div>
-              <div class="info-row">
                 <span>Category</span>
-                <strong>Authentication</strong>
+                <strong id="infoCategory">Architecture</strong>
               </div>
               <div class="info-row">
                 <span>Difficulty</span>
@@ -145,29 +144,29 @@
     </section>
 
     <!-- ========================================= -->
-    <!-- START SECTION (shown until session begins)-->
+    <!-- START SECTION                             -->
     <!-- ========================================= -->
     <section class="start-section" id="startSection">
       <div class="contest-container">
         <div class="glass-card start-card">
           <h2>🚀 Ready to Start?</h2>
           <p>
-            Click below to begin. A live session will be created, your code
-            edits and AI chat will be saved automatically.
+            Click below to begin. A live session will be created, and your approach plan
+            and AI chat will be saved automatically.
           </p>
           <div id="startNotice" class="start-notice" style="display: none;"></div>
           <div class="start-form" id="startInitialForm">
             <button id="startBtn" class="btn btn-primary">
-              I'm Ready — Write My Hypothesis
+              I'm Ready — Write My Initial Framing
             </button>
           </div>
           <div id="hypothesisStep" style="display:none;" class="hypothesis-step">
-            <label for="hypothesisInput">Before you see the code — what do you think is causing this? Write your best guess.</label>
-            <textarea id="hypothesisInput" rows="4" placeholder="e.g. Sounds like a token expiry or session timeout issue — I'd check how the session length is configured..."></textarea>
-            <button id="beginDebuggingBtn" class="btn btn-primary">Begin Debugging</button>
+            <label for="hypothesisInput">Initial Framing / Strategy: Before writing the full approach, summarize your initial high-level strategy.</label>
+            <textarea id="hypothesisInput" rows="4" placeholder="e.g. For offline support and fast response, I plan to leverage on-device LLM inference combined with SQLite local storage..."></textarea>
+            <button id="beginDebuggingBtn" class="btn btn-primary">Begin Approach Workspace</button>
           </div>
           <p class="start-hint">
-            You can also download the challenge for local reference:
+            You can also download the challenge spec:
             <button id="downloadChallenge" class="btn-link">
               Download challenge.zip
             </button>
@@ -177,7 +176,7 @@
     </section>
 
     <!-- ========================================= -->
-    <!-- WORKSPACE (hidden until session started)  -->
+    <!-- WORKSPACE                                 -->
     <!-- ========================================= -->
     <section class="workspace-section" id="workspaceSection" style="display:none">
       <div class="contest-container">
@@ -195,42 +194,23 @@
 
         <div class="challenge-workspace">
 
-          <!-- Code Pane -->
+          <!-- Approach Pane -->
           <div class="code-pane">
             <div class="pane-header">
               <span class="pane-title">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                Code Editor
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                Your Approach Plan
               </span>
               <span id="saveStatus" class="save-status" title="Auto-save status">—</span>
             </div>
-            <div id="fileTabsBar" class="file-tabs-bar" style="display: none;"></div>
             <div class="code-editor-wrapper">
               <textarea
                 id="codeEditor"
-                spellcheck="false"
+                spellcheck="true"
                 autocomplete="off"
-                autocorrect="off"
-                autocapitalize="off"
-                placeholder="Your code will appear here once the challenge starts..."
+                placeholder="Describe how you'd architect and build this solution, addressing each constraint above. Include component choices, open-source libraries/tools, offline/latency tradeoffs, and domain considerations..."
               ></textarea>
               <div id="cursorOverlay" class="cursor-overlay" aria-hidden="true"></div>
-            </div>
-            <!-- Sandbox Execution Output Panel -->
-            <div id="execOutputPanel" class="exec-output-panel" style="display: none;">
-              <div class="exec-output-header">
-                <span>⚠️ Sandbox Execution & Test Logs</span>
-                <button id="closeExecOutputBtn" class="btn-icon" type="button">✕</button>
-              </div>
-              <pre id="execOutputText"></pre>
-            </div>
-            <!-- Compiler Check Output Panel -->
-            <div id="compilerOutputPanel" class="compiler-output-panel" style="display: none;">
-              <div class="compiler-output-header">
-                <span>💻 Static Analyzer & Compiler Diagnostics</span>
-                <button id="closeCompilerOutputBtn" class="btn-icon" type="button">✕</button>
-              </div>
-              <div id="compilerOutputContent" class="compiler-output-content"></div>
             </div>
           </div>
 
@@ -240,7 +220,7 @@
             <div class="pane-header">
               <span class="pane-title">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                AI Assistant
+                AI Sounding Board
               </span>
               <span class="pane-badge">Gemini</span>
             </div>
@@ -248,7 +228,7 @@
               <div id="promptTypingPreview" class="prompt-typing-preview" style="display:none;"></div>
               <div id="chatMessages" role="log" aria-live="polite">
                 <div class="chat-welcome">
-                  <p>👋 Hi! I'm your debugging partner.<br/>Ask me anything about the challenge — I'll help you find the bug without giving it away directly.</p>
+                  <p>👋 Hi! I'm your architectural sounding board.<br/>Ask me about tradeoffs, open-source tool options, or constraint ideas — I'll help you refine your approach plan.</p>
                 </div>
               </div>
             </div>
@@ -256,7 +236,7 @@
               <input
                 id="chatInput"
                 type="text"
-                placeholder="Ask the AI for help..."
+                placeholder="Ask the AI sounding board..."
                 autocomplete="off"
                 maxlength="1000"
               />
@@ -269,11 +249,8 @@
 
         <!-- Submit Bar -->
         <div class="submit-bar">
-          <p class="submit-hint">Check your code with static diagnostics before final submission.</p>
+          <p class="submit-hint">Graded on Optimization, Open-Source Tool Choices, Domain Knowledge, and Write-up Quality.</p>
           <div class="submit-actions-group" style="display:flex; gap:12px; align-items:center;">
-            <button id="checkCodeBtn" class="btn btn-secondary check-code-btn" type="button">
-              ⚡ Submit Code (Compiler Check)
-            </button>
             <button id="submitBtn" class="btn btn-primary submit-workspace-btn">
               Submit for Grading
             </button>

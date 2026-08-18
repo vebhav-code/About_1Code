@@ -14,7 +14,7 @@ class ChallengeSession(Base):
     team_id = Column(Integer, ForeignKey("teams.id"), nullable=True, index=True)
     name = Column(String, nullable=False)
     hypothesis = Column(Text, nullable=True)
-    current_code = Column(Text, nullable=False, default="")
+    current_approach = Column(Text, nullable=False, default="")
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     submitted_at = Column(DateTime(timezone=True), nullable=True)
 

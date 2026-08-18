@@ -7,6 +7,28 @@ export function initTeamChallenge() {
 
   if (!form) return;
 
+  const titleInput = document.getElementById('title');
+  const slugInput = document.getElementById('slug');
+  let userEditedSlug = false;
+
+  if (slugInput) {
+    slugInput.addEventListener('input', () => {
+      userEditedSlug = true;
+    });
+  }
+
+  if (titleInput && slugInput) {
+    titleInput.addEventListener('input', () => {
+      if (!userEditedSlug) {
+        slugInput.value = titleInput.value
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)+/g, '');
+      }
+    });
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (errorMsg) errorMsg.hidden = true;
@@ -44,11 +66,14 @@ export function initTeamChallenge() {
       }
       window.location.hash = 'challenges';
     } catch (error) {
+      const msg = error.message || 'Failed to create team challenge';
       if (errorMsg) {
-        errorMsg.textContent = error.message || 'Failed to create team challenge';
+        errorMsg.textContent = msg;
         errorMsg.hidden = false;
-      } else if (typeof window.showToast === 'function') {
-        window.showToast(error.message, 'error');
+        errorMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      if (typeof window.showToast === 'function') {
+        window.showToast(msg, 'error');
       }
       if (submitBtn) {
         submitBtn.disabled = false;

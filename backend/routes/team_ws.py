@@ -33,25 +33,18 @@ async def _send_json_safe(ws: WebSocket, data: dict):
         logger.warning(f"Failed to send WS message: {e}")
 
 
-def broadcast_to_team(team_id: int, message: dict, exclude_user_id: int = None):
+async def broadcast_to_team(team_id: int, message: dict, exclude_user_id: int = None):
     sockets = list(_get_team_sockets(team_id))
     if not sockets:
         return
 
-    async def _do_broadcast():
-        tasks = []
-        for uid, ws in sockets:
-            if exclude_user_id is not None and uid == exclude_user_id:
-                continue
-            tasks.append(_send_json_safe(ws, message))
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
-
-    try:
-        loop = asyncio.get_running_loop()
-        loop.create_task(_do_broadcast())
-    except RuntimeError:
-        asyncio.run(_do_broadcast())
+    tasks = []
+    for uid, ws in sockets:
+        if exclude_user_id is not None and uid == exclude_user_id:
+            continue
+        tasks.append(_send_json_safe(ws, message))
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
 
 
 @router.websocket("/{team_id}/ws")
@@ -82,7 +75,7 @@ async def team_websocket_endpoint(websocket: WebSocket, team_id: int, user_id: i
     _team_connections[team_id].add((user_id, websocket))
 
     # Broadcast member_online to team
-    broadcast_to_team(
+    await broadcast_to_team(
         team_id=team_id,
         message={"type": "member_online", "user_id": user_id},
         exclude_user_id=user_id,
@@ -96,11 +89,16 @@ async def team_websocket_endpoint(websocket: WebSocket, team_id: int, user_id: i
             if not msg_type:
                 continue
 
-            # Code sync / update per filename
-            if msg_type in ("code-update", "code_sync", "code_diff", "cursor_move", "prompt_typing", "file_switch"):
-                if msg_type in ("code-update", "code_sync") and data.get("code") is not None:
-                    filename = data.get("filename")
-                    code = data.get("code")
+            # Heartbeat ping/pong
+            if msg_type in ("ping", "pong"):
+                if msg_type == "ping":
+                    await _send_json_safe(websocket, {"type": "pong"})
+                continue
+
+            # Approach sync / update
+            if msg_type in ("approach_update", "approach_sync", "code-update", "code_sync", "code_diff", "cursor_move", "prompt_typing", "file_switch"):
+                approach_text = data.get("current_approach") if data.get("current_approach") is not None else data.get("code")
+                if msg_type in ("approach_update", "approach_sync", "code-update", "code_sync") and approach_text is not None:
                     try:
                         db_ws = SessionLocal()
                         session = db_ws.query(ChallengeSession).filter(
@@ -108,23 +106,13 @@ async def team_websocket_endpoint(websocket: WebSocket, team_id: int, user_id: i
                             ChallengeSession.submitted_at.is_(None)
                         ).first()
                         if session:
-                            if filename:
-                                try:
-                                    files_dict = json.loads(session.current_code or "{}")
-                                    if not isinstance(files_dict, dict):
-                                        files_dict = {}
-                                except Exception:
-                                    files_dict = {}
-                                files_dict[filename] = code
-                                session.current_code = json.dumps(files_dict)
-                            else:
-                                session.current_code = code
+                            session.current_approach = approach_text
                             db_ws.commit()
                         db_ws.close()
                     except Exception as e:
-                        logger.warning(f"Failed to persist live WS code for team {team_id}: {e}")
+                        logger.warning(f"Failed to persist live WS approach for team {team_id}: {e}")
 
-                broadcast_to_team(team_id=team_id, message=data, exclude_user_id=user_id)
+                await broadcast_to_team(team_id=team_id, message=data, exclude_user_id=user_id)
 
 
             # Voice signaling (targeted)
@@ -140,15 +128,15 @@ async def team_websocket_endpoint(websocket: WebSocket, team_id: int, user_id: i
 
             # Mute state
             elif msg_type in ("mute-state", "mute_state"):
-                broadcast_to_team(team_id=team_id, message=data, exclude_user_id=user_id)
+                await broadcast_to_team(team_id=team_id, message=data, exclude_user_id=user_id)
 
             # Chat message relay
             elif msg_type == "chat_message":
-                broadcast_to_team(team_id=team_id, message=data, exclude_user_id=user_id)
+                await broadcast_to_team(team_id=team_id, message=data, exclude_user_id=user_id)
 
             # Member joined / team started relays
             elif msg_type in ("member_joined", "team_started"):
-                broadcast_to_team(team_id=team_id, message=data, exclude_user_id=user_id)
+                await broadcast_to_team(team_id=team_id, message=data, exclude_user_id=user_id)
 
             else:
                 logger.warning(f"Unknown WS message type: {msg_type} from user {user_id}")
@@ -163,17 +151,17 @@ async def team_websocket_endpoint(websocket: WebSocket, team_id: int, user_id: i
             if not _team_connections[team_id]:
                 del _team_connections[team_id]
 
-        broadcast_to_team(
+        await broadcast_to_team(
             team_id=team_id,
             message={"type": "cursor_move", "user_id": user_id, "selection_start": None, "selection_end": None},
             exclude_user_id=user_id,
         )
-        broadcast_to_team(
+        await broadcast_to_team(
             team_id=team_id,
             message={"type": "prompt_typing", "user_id": user_id, "draft_text": ""},
             exclude_user_id=user_id,
         )
-        broadcast_to_team(
+        await broadcast_to_team(
             team_id=team_id,
             message={"type": "member_offline", "user_id": user_id},
             exclude_user_id=user_id,

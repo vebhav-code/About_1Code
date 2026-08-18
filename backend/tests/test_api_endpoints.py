@@ -59,7 +59,9 @@ def test_get_challenge_details():
 def test_leaderboard_endpoint():
     response = client.get("/api/leaderboard")
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    data = response.json()
+    assert isinstance(data, dict)
+    assert "entries" in data
 
 
 def test_leaderboard_stats_endpoint():

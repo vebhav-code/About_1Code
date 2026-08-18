@@ -218,7 +218,7 @@ def list_open_teams(
 
 
 @router.post("/teams/join", response_model=TeamResponse)
-def join_team(body: TeamJoin, db: Session = Depends(get_db)):
+async def join_team(body: TeamJoin, db: Session = Depends(get_db)):
     """
     Join an existing open team via team_id or invite_code.
     """
@@ -273,7 +273,7 @@ def join_team(body: TeamJoin, db: Session = Depends(get_db)):
     db.commit()
 
     # Broadcast member_joined to websocket channel
-    broadcast_to_team(
+    await broadcast_to_team(
         team_id=team.id,
         message={
             "type": "member_joined",
@@ -299,7 +299,7 @@ def get_team(team_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/teams/{team_id}/start")
-def start_team_challenge(team_id: int, body: TeamStartRequest, db: Session = Depends(get_db)):
+async def start_team_challenge(team_id: int, body: TeamStartRequest, db: Session = Depends(get_db)):
     """
     Start the shared team session (leader only, requires 2+ members).
     """
@@ -366,7 +366,7 @@ def start_team_challenge(team_id: int, body: TeamStartRequest, db: Session = Dep
         user_id=None,
         name=team.name,
         hypothesis="Team Challenge Session",
-        current_code=starter_code,
+        current_approach=starter_code,
     )
     db.add(session)
     team.status = "active"
@@ -380,7 +380,7 @@ def start_team_challenge(team_id: int, body: TeamStartRequest, db: Session = Dep
     }
 
     # Broadcast team_started to websocket channel
-    broadcast_to_team(
+    await broadcast_to_team(
         team_id=team.id,
         message={
             "type": "team_started",
@@ -467,7 +467,7 @@ def get_pending_requests(user_id: int, db: Session = Depends(get_db)):
 
 @router.post("/join-requests/{request_id}/respond")
 @router.post("/team/join-requests/{request_id}/respond")
-def respond_to_request(request_id: int, accept: bool, responding_user_id: int, db: Session = Depends(get_db)):
+async def respond_to_request(request_id: int, accept: bool, responding_user_id: int, db: Session = Depends(get_db)):
     req = db.query(TeamJoinRequest).filter(TeamJoinRequest.id == request_id).first()
     if not req or req.invited_user_id != responding_user_id:
         raise HTTPException(status_code=404, detail="Request not found")
@@ -479,6 +479,33 @@ def respond_to_request(request_id: int, accept: bool, responding_user_id: int, d
         already = db.query(TeamMember).filter(TeamMember.team_id == req.team_id, TeamMember.user_id == responding_user_id).first()
         if not already:
             db.add(TeamMember(team_id=req.team_id, user_id=responding_user_id))
+        db.commit()
+
+        user = db.query(User).filter(User.id == responding_user_id).first()
+        user_name = user.name if user else "Anonymous"
+
+        await broadcast_to_team(
+            team_id=req.team_id,
+            message={
+                "type": "member_joined",
+                "user_id": responding_user_id,
+                "name": user_name,
+            },
+        )
+
+        team = db.query(Team).filter(Team.id == req.team_id).first()
+        challenge_slug = ""
+        if team:
+            challenge = db.query(Challenge).filter(Challenge.id == team.challenge_id).first()
+            if challenge:
+                challenge_slug = challenge.slug
+
+        return {
+            "status": req.status,
+            "team_id": req.team_id,
+            "challenge_slug": challenge_slug,
+        }
+
     db.commit()
     return {"status": req.status}
 

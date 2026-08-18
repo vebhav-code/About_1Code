@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -6,7 +7,6 @@ from sqlalchemy.orm import Session
 
 from database.connection import SessionLocal
 from models.challenge import Challenge
-from models.challenge_file import ChallengeFile
 from models.submission import Submission
 from models.team import Team
 from schemas.admin import AdminChallengeCreate
@@ -26,6 +26,8 @@ class ChallengeUploadService:
                 detail="Challenge slug already exists",
             )
             
+        constraints_str = json.dumps(payload.constraints or [])
+
         challenge = Challenge(
             slug=payload.slug,
             title=payload.title,
@@ -35,9 +37,8 @@ class ChallengeUploadService:
             rules=payload.rules,
             time_limit=payload.time_limit,
             category=payload.category,
-            starter_code=payload.starter_code or "",
             official_solution=payload.official_solution or "",
-            run_command=payload.run_command or "pytest",
+            constraints=constraints_str,
             mode=payload.mode,
             team_size=payload.team_size,
             challenge_format=getattr(payload, "challenge_format", "debug") or "debug",
@@ -45,20 +46,6 @@ class ChallengeUploadService:
             is_active=True,
         )
         self.db.add(challenge)
-        self.db.flush()
-
-        if payload.files:
-            for f in payload.files:
-                cf = ChallengeFile(
-                    challenge_id=challenge.id,
-                    filename=f.filename,
-                    file_order=f.file_order,
-                    starter_content=f.starter_content or "",
-                    solution_content=f.solution_content or "",
-                    language=f.language or f.filename.rsplit(".", 1)[-1].lower(),
-                )
-                self.db.add(cf)
-
         self.db.commit()
         self.db.refresh(challenge)
         return self._serialize_detail(challenge)
@@ -104,9 +91,7 @@ class ChallengeUploadService:
             "time_limit",
             "is_active",
             "category",
-            "starter_code",
             "official_solution",
-            "run_command",
             "mode",
             "team_size",
             "challenge_format",
@@ -114,20 +99,12 @@ class ChallengeUploadService:
             if field in payload and payload[field] is not None:
                 setattr(challenge, field, payload[field])
 
-        if "files" in payload and payload["files"] is not None:
-            self.db.query(ChallengeFile).filter(ChallengeFile.challenge_id == challenge_id).delete()
-            files_data = payload["files"]
-            for f_item in files_data:
-                f_dict = f_item.dict() if hasattr(f_item, "dict") else f_item
-                cf = ChallengeFile(
-                    challenge_id=challenge.id,
-                    filename=f_dict["filename"],
-                    file_order=f_dict.get("file_order", 0),
-                    starter_content=f_dict.get("starter_content", ""),
-                    solution_content=f_dict.get("solution_content", ""),
-                    language=f_dict.get("language") or f_dict["filename"].rsplit(".", 1)[-1].lower(),
-                )
-                self.db.add(cf)
+        if "constraints" in payload and payload["constraints"] is not None:
+            constraints_val = payload["constraints"]
+            if isinstance(constraints_val, list):
+                challenge.constraints = json.dumps(constraints_val)
+            elif isinstance(constraints_val, str):
+                challenge.constraints = constraints_val
 
         self.db.commit()
         self.db.refresh(challenge)
@@ -160,6 +137,15 @@ class ChallengeUploadService:
                 "reason": "Challenge has existing submissions and was archived instead of deleted to preserve leaderboard/profile history.",
             }
 
+    def _parse_constraints(self, raw: Optional[str]) -> List[str]:
+        if not raw:
+            return []
+        try:
+            res = json.loads(raw)
+            return res if isinstance(res, list) else []
+        except Exception:
+            return []
+
     def _serialize(self, challenge: Challenge) -> Dict[str, object]:
         return {
             "id": challenge.id,
@@ -174,7 +160,7 @@ class ChallengeUploadService:
             "is_active": challenge.is_active if challenge.is_active is not None else True,
             "created_at": challenge.created_at,
             "category": challenge.category or "",
-            "run_command": challenge.run_command or "pytest",
+            "constraints": self._parse_constraints(challenge.constraints),
             "mode": challenge.mode or "individual",
             "team_size": challenge.team_size if challenge.team_size is not None else 1,
             "challenge_format": getattr(challenge, "challenge_format", "debug") or "debug",
@@ -182,17 +168,5 @@ class ChallengeUploadService:
 
     def _serialize_detail(self, challenge: Challenge) -> Dict[str, object]:
         data = self._serialize(challenge)
-        data["starter_code"] = challenge.starter_code or ""
         data["official_solution"] = challenge.official_solution or ""
-        data["files"] = [
-            {
-                "filename": f.filename,
-                "starter_content": f.starter_content,
-                "solution_content": f.solution_content,
-                "file_order": f.file_order,
-                "language": f.language,
-            }
-            for f in sorted(challenge.files, key=lambda x: x.file_order)
-        ] if hasattr(challenge, "files") and challenge.files else []
         return data
-

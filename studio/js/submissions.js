@@ -87,11 +87,10 @@ async function openReviewModal(submissionId) {
     let evalDetailsHtml = '';
     if (evaluation) {
       const rubricScores = [
-        { label: 'Hypothesis (Root Cause)', val: evaluation.hypothesis, max: 20 },
-        { label: 'Prompt Quality', val: evaluation.prompt_quality, max: 25 },
-        { label: 'AI Collaboration', val: evaluation.ai_collaboration, max: 20 },
-        { label: 'Code Correctness', val: evaluation.code_correctness, max: 25 },
-        { label: 'Problem Solving', val: evaluation.problem_solving, max: 10 }
+        { label: 'Optimization against Constraints', val: evaluation.optimization != null ? evaluation.optimization : (sub.optimization_score || sub.code_correctness_score || 0), max: 25 },
+        { label: 'Open-Source Tools & Library Selection', val: evaluation.open_source_usage != null ? evaluation.open_source_usage : (sub.open_source_usage_score || sub.ai_collaboration_score || 0), max: 25 },
+        { label: 'Topic Knowledge & Domain Depth', val: evaluation.topic_knowledge != null ? evaluation.topic_knowledge : (sub.topic_knowledge_score || sub.problem_understanding_score || 0), max: 25 },
+        { label: 'Approach Clarity & Write-up Quality', val: evaluation.prompt_quality != null ? evaluation.prompt_quality : (sub.prompt_quality_score || 0), max: 25 }
       ];
 
       evalDetailsHtml = `

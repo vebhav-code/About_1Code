@@ -57,6 +57,7 @@ def get_leaderboard(
         User, Submission.user_id == User.id
     )
 
+    challenge = None
     if challenge_slug and challenge_slug.strip():
         challenge = db.query(Challenge).filter(Challenge.slug == challenge_slug.strip()).first()
         if not challenge:
@@ -162,8 +163,8 @@ def get_leaderboard(
             my_rank_info = UserRankSummary(participated=False)
 
     return LeaderboardResponse(
-        challenge_slug=challenge.slug,
-        challenge_title=challenge.title,
+        challenge_slug=challenge.slug if challenge else (challenge_slug or ""),
+        challenge_title=challenge.title if challenge else "",
         mode=target_mode,
         entries=entry_list,
         my_rank=my_rank_info

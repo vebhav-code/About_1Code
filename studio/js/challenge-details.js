@@ -16,6 +16,22 @@ export async function initChallengeDetails(id) {
     document.getElementById('challenge-title').textContent = details.title;
     document.getElementById('challenge-description').textContent = details.description || 'No description provided.';
     document.getElementById('challenge-scenario').textContent = details.scenario || 'No scenario provided.';
+    
+    const constraintsEl = document.getElementById('challenge-constraints');
+    if (constraintsEl) {
+      constraintsEl.innerHTML = '';
+      const constraintsList = Array.isArray(details.constraints) ? details.constraints : [];
+      if (constraintsList.length > 0) {
+        constraintsList.forEach(c => {
+          const li = document.createElement('li');
+          li.textContent = c;
+          constraintsEl.appendChild(li);
+        });
+      } else {
+        constraintsEl.innerHTML = '<li>No explicit constraints specified.</li>';
+      }
+    }
+
     document.getElementById('challenge-rules').textContent = Array.isArray(details.rules) ? details.rules.join(', ') : details.rules || 'No rules provided.';
     document.getElementById('challenge-difficulty').innerHTML = getDifficultyBadge(details.difficulty);
     const modeEl = document.getElementById('challenge-mode');
@@ -40,7 +56,6 @@ export async function initChallengeDetails(id) {
       slugElement.textContent = details.slug;
     }
 
-    // Toggle button texts/states
     const activateBtn = document.getElementById('activate-challenge');
     const deactivateBtn = document.getElementById('deactivate-challenge');
     if (activateBtn && deactivateBtn) {
@@ -57,10 +72,8 @@ export async function initChallengeDetails(id) {
     return `<span class="badge badge-neutral">${diff || 'N/A'}</span>`;
   }
 
-  // Initial render
   renderDetails();
 
-  // Load stats
   const stats = await getLeaderboardBySlug(details.slug).catch(() => []);
   const challengeStats = stats.find(s => s.challenge_slug === details.slug) || { total_participants: 0, average_score: 0.0 };
   
@@ -69,11 +82,9 @@ export async function initChallengeDetails(id) {
   if (participantsEl) participantsEl.textContent = challengeStats.total_participants;
   if (averageEl) averageEl.textContent = challengeStats.average_score.toFixed(1);
 
-  // Download actions
   const addDownloadHandler = (buttonId, pathSuffix) => {
     const button = document.getElementById(buttonId);
     if (!button) return;
-    // Replace old handler
     const newBtn = button.cloneNode(true);
     button.parentNode.replaceChild(newBtn, button);
     newBtn.addEventListener('click', () => {
@@ -83,7 +94,6 @@ export async function initChallengeDetails(id) {
 
   addDownloadHandler('download-reference', 'download');
 
-  // Edit Challenge action
   const editBtn = document.getElementById('edit-challenge');
   if (editBtn) {
     editBtn.addEventListener('click', () => {
@@ -91,15 +101,14 @@ export async function initChallengeDetails(id) {
     });
   }
 
-  // Activate / Deactivate actions
   const toggleStatus = async (isActive) => {
     try {
       const updated = await updateAdminChallenge(details.id, { is_active: isActive });
       details = updated;
       renderDetails();
-      window.showToast(`Challenge ${isActive ? 'activated' : 'deactivated'} successfully.`, 'success');
+      if (window.showToast) window.showToast(`Challenge ${isActive ? 'activated' : 'deactivated'} successfully.`, 'success');
     } catch (err) {
-      window.showToast(err.message, 'error');
+      if (window.showToast) window.showToast(err.message, 'error');
     }
   };
 
@@ -166,27 +175,19 @@ export async function initChallengeDetails(id) {
             <label class="form-label" for="edit-rules">Rules</label>
             <textarea id="edit-rules" class="form-textarea">${details.rules || ''}</textarea>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="edit-run-command">Run Command (Sandbox Execution Entrypoint)</label>
-            <input type="text" id="edit-run-command" class="form-input" style="font-family:monospace;" value="${details.run_command || 'pytest'}">
-          </div>
 
-          <!-- Multi-File Section -->
+          <!-- Constraints Section -->
           <div style="border:1px solid var(--border); border-radius:6px; padding:12px; background:rgba(255,255,255,0.02); margin-bottom:14px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <label class="form-label" style="margin:0; font-weight:700;">Project Files (Multi-File Challenge)</label>
-              <button type="button" id="edit-add-file-btn" class="button" style="padding:4px 10px; font-size:0.8rem;">+ Add File</button>
+              <label class="form-label" style="margin:0; font-weight:700;">Explicit Constraints</label>
+              <button type="button" id="edit-add-constraint-btn" class="button" style="padding:4px 10px; font-size:0.8rem;">+ Add Constraint</button>
             </div>
-            <div id="edit-files-container" style="display:flex; flex-direction:column; gap:12px;"></div>
+            <div id="edit-constraints-container" style="display:flex; flex-direction:column; gap:8px;"></div>
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="edit-starter-code">Default Starter Code (Legacy / Fallback)</label>
-            <textarea id="edit-starter-code" class="form-textarea" style="font-family:monospace;">${details.starter_code || ''}</textarea>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="edit-official-solution">Default Official Solution (Legacy / Fallback)</label>
-            <textarea id="edit-official-solution" class="form-textarea" style="font-family:monospace;">${details.official_solution || ''}</textarea>
+            <label class="form-label" for="edit-official-solution">Reference Approach Notes (Grading Calibration)</label>
+            <textarea id="edit-official-solution" class="form-textarea">${details.official_solution || ''}</textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -197,39 +198,25 @@ export async function initChallengeDetails(id) {
 
     document.body.appendChild(backdrop);
 
-    const editFilesContainer = document.getElementById('edit-files-container');
-    const editAddFileBtn = document.getElementById('edit-add-file-btn');
+    const editConstraintsContainer = document.getElementById('edit-constraints-container');
+    const editAddConstraintBtn = document.getElementById('edit-add-constraint-btn');
 
-    function createEditFileCard(filename = '', starterContent = '', solutionContent = '') {
-      const card = document.createElement('div');
-      card.className = 'file-card';
-      card.style.cssText = 'border:1px solid var(--border); border-radius:6px; padding:10px; background:rgba(0,0,0,0.2);';
-      card.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-          <label style="font-weight:600; font-size:0.8rem;">Filename</label>
-          <button type="button" class="button remove-file-btn" style="padding:2px 8px; font-size:0.75rem; background:rgba(239,68,68,0.2); color:#fca5a5; border:1px solid rgba(239,68,68,0.4);">Delete File</button>
-        </div>
-        <input type="text" class="file-name-input form-input" value="${filename}" placeholder="e.g. api.py" style="width:100%; margin-bottom:8px; font-family:monospace; font-size:0.8rem;" />
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
-          <div>
-            <label style="font-weight:600; font-size:0.75rem; display:block; margin-bottom:2px;">Starter Content</label>
-            <textarea class="file-starter-input form-textarea" rows="4" style="font-family:monospace; font-size:0.75rem;">${starterContent}</textarea>
-          </div>
-          <div>
-            <label style="font-weight:600; font-size:0.75rem; display:block; margin-bottom:2px;">Official Solution</label>
-            <textarea class="file-solution-input form-textarea" rows="4" style="font-family:monospace; font-size:0.75rem;">${solutionContent}</textarea>
-          </div>
-        </div>
+    function createEditConstraintRow(text = '') {
+      const row = document.createElement('div');
+      row.className = 'constraint-row';
+      row.style.cssText = 'display:flex; gap:8px; align-items:center;';
+      row.innerHTML = `
+        <input type="text" class="constraint-input form-input" value="${text.replace(/"/g, '&quot;')}" placeholder="e.g. Must work offline" style="flex:1; font-size:0.8rem;" />
+        <button type="button" class="button remove-constraint-btn" style="padding:2px 8px; font-size:0.75rem; background:rgba(239,68,68,0.2); color:#fca5a5;">✕</button>
       `;
-      card.querySelector('.remove-file-btn').addEventListener('click', () => card.remove());
-      editFilesContainer.appendChild(card);
+      row.querySelector('.remove-constraint-btn').addEventListener('click', () => row.remove());
+      editConstraintsContainer.appendChild(row);
     }
 
-    if (editAddFileBtn && editFilesContainer) {
-      editAddFileBtn.addEventListener('click', () => createEditFileCard());
-      if (Array.isArray(details.files) && details.files.length > 0) {
-        details.files.forEach(f => createEditFileCard(f.filename, f.starter_content, f.solution_content));
-      }
+    if (editAddConstraintBtn && editConstraintsContainer) {
+      editAddConstraintBtn.addEventListener('click', () => createEditConstraintRow());
+      const currentConstraints = Array.isArray(details.constraints) ? details.constraints : [];
+      currentConstraints.forEach(c => createEditConstraintRow(c));
     }
 
     const close = () => backdrop.remove();
@@ -263,20 +250,10 @@ export async function initChallengeDetails(id) {
       let team_size = parseInt(document.getElementById('edit-team-size').value, 10) || 1;
       if (mode === 'individual') team_size = 1;
 
-      // Collect project files
-      const fileCards = editFilesContainer ? Array.from(editFilesContainer.querySelectorAll('.file-card')) : [];
-      const filesList = [];
-      fileCards.forEach((card, idx) => {
-        const fn = card.querySelector('.file-name-input')?.value?.trim();
-        if (fn) {
-          filesList.push({
-            filename: fn,
-            starter_content: card.querySelector('.file-starter-input')?.value || '',
-            solution_content: card.querySelector('.file-solution-input')?.value || '',
-            file_order: idx
-          });
-        }
-      });
+      const constraintInputs = editConstraintsContainer ? Array.from(editConstraintsContainer.querySelectorAll('.constraint-input')) : [];
+      const constraintsList = constraintInputs
+        .map(input => (input.value || '').trim())
+        .filter(val => val.length > 0);
 
       const payload = {
         title: document.getElementById('edit-title').value,
@@ -287,9 +264,7 @@ export async function initChallengeDetails(id) {
         description: document.getElementById('edit-description').value,
         scenario: document.getElementById('edit-scenario').value,
         rules: document.getElementById('edit-rules').value,
-        run_command: document.getElementById('edit-run-command')?.value || 'pytest',
-        files: filesList,
-        starter_code: document.getElementById('edit-starter-code').value,
+        constraints: constraintsList,
         official_solution: document.getElementById('edit-official-solution').value
       };
 
@@ -297,10 +272,10 @@ export async function initChallengeDetails(id) {
         const updated = await updateAdminChallenge(details.id, payload);
         details = updated;
         renderDetails();
-        window.showToast('Challenge updated successfully.', 'success');
+        if (window.showToast) window.showToast('Challenge updated successfully.', 'success');
         close();
       } catch (err) {
-        window.showToast(err.message, 'error');
+        if (window.showToast) window.showToast(err.message, 'error');
         saveBtn.textContent = 'Save Changes';
         saveBtn.disabled = false;
       }

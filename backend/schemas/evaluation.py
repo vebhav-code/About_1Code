@@ -11,11 +11,11 @@ class TeamMemberInfo(BaseModel):
 class EvaluationResponse(BaseModel):
     id: int
     submission_id: int
-    hypothesis: int
+    hypothesis: int = 0
     prompt_quality: int
-    ai_collaboration: int
-    code_correctness: int
-    problem_solving: int
+    open_source_usage: int
+    optimization: int
+    topic_knowledge: int
     total_score: int
     strengths: List[str]
     improvements: List[str]
@@ -23,7 +23,6 @@ class EvaluationResponse(BaseModel):
     late: bool = False
     evaluated_at: datetime
 
-    # --- Result page: who submitted ---
     user_name: Optional[str] = None
     team_name: Optional[str] = None
     members: Optional[List[TeamMemberInfo]] = None

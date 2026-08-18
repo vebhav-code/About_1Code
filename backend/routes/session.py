@@ -1,7 +1,7 @@
 """
 routes/session.py
-Session-based challenge workspace routes.
-Replaces the zip-upload flow with a server-tracked session + live editor + chat.
+Session-based challenge workspace routes for Approach Mode.
+Replaces code execution with free-text approach architecture writing and AI evaluation.
 Generalised for both individual and team mode sessions.
 """
 
@@ -22,19 +22,15 @@ from models.chat_message import ChatMessage
 from models.evaluation import Evaluation
 from models.session import ChallengeSession
 from models.submission import Submission
-from models.submission_file import SubmissionFile
 from models.team import Team
 from models.team_member import TeamMember
 from models.user import User
 from routes.team_ws import broadcast_to_team
 from services.activity_service import record_visit
-from services.execution_service import run_submission_code
 from services.gemini_service import (
     chat_with_gemini,
-    check_code_for_errors,
     evaluate_submission_with_gemini,
-    read_official_solution,
-    read_source_files,
+    _parse_constraints_list,
 )
 from services.session_helpers import load_starter_code
 
@@ -60,16 +56,14 @@ class ChatRequest(BaseModel):
     actor_user_id: Optional[int] = None
 
 
-class SaveCodeRequest(BaseModel):
-    code: Optional[str] = None
-    filename: Optional[str] = None
-    files: Optional[Dict[str, str]] = None
+class SaveApproachRequest(BaseModel):
+    approach: Optional[str] = None
+    code: Optional[str] = None  # Backward-compatibility fallback alias
     actor_user_id: Optional[int] = None
 
 
 class SubmitRequest(BaseModel):
     actor_user_id: Optional[int] = None
-
 
 
 # ---------------------------------------------------------------------------
@@ -82,12 +76,6 @@ def _authorize_session_actor(
     db: Session,
     require_leader: bool = False
 ) -> None:
-    """
-    Ensure the actor is authorized to interact with the session.
-    If individual session: user_id can match or be unenforced for backward compatibility.
-    If team session: actor_user_id MUST be provided and MUST be a member of the team.
-    If require_leader is True: actor_user_id MUST be the team leader.
-    """
     if session.team_id is not None:
         if user_id is None:
             raise HTTPException(
@@ -127,15 +115,14 @@ def _authorize_session_actor(
 @router.post("/start", status_code=status.HTTP_201_CREATED)
 def start_session(body: StartRequest, db: Session = Depends(get_db)):
     """
-    Create a new individual ChallengeSession row.
-    Seeds current_code with the challenge's buggy project starter files.
-    Returns session_id + starter_code.
+    Create a new individual ChallengeSession row for Approach Mode.
+    Returns session_id + challenge metadata including constraints list.
     """
     user = db.query(User).filter(User.id == body.user_id).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found — your session may be from a different environment. Please log in again.",
+            detail="User not found — please log in again.",
         )
 
     challenge = db.query(Challenge).filter(Challenge.id == body.challenge_id).first()
@@ -148,7 +135,23 @@ def start_session(body: StartRequest, db: Session = Depends(get_db)):
             detail="This challenge is team-only. Join or create a team to attempt it.",
         )
 
-    # 1. Check if user is in an active or forming team for this challenge
+    # 1. Check existing submission
+    existing_submission = (
+        db.query(Submission)
+        .outerjoin(TeamMember, TeamMember.team_id == Submission.team_id)
+        .filter(
+            Submission.challenge_id == body.challenge_id,
+            (Submission.user_id == body.user_id) | (TeamMember.user_id == body.user_id),
+        )
+        .first()
+    )
+    if existing_submission:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You've already submitted this challenge. Each challenge can only be attempted once.",
+        )
+
+    # 2. Check team membership
     active_member = (
         db.query(TeamMember)
         .join(Team, TeamMember.team_id == Team.id)
@@ -165,23 +168,9 @@ def start_session(body: StartRequest, db: Session = Depends(get_db)):
             detail="You are already part of an active or forming team for this challenge.",
         )
 
-    # 2. Check if user already submitted this challenge (individually or via team)
-    existing_submission = (
-        db.query(Submission)
-        .outerjoin(TeamMember, TeamMember.team_id == Submission.team_id)
-        .filter(
-            Submission.challenge_id == body.challenge_id,
-            (Submission.user_id == body.user_id) | (TeamMember.user_id == body.user_id),
-        )
-        .first()
-    )
-    if existing_submission:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="You've already submitted this challenge. Each challenge can only be attempted once.",
-        )
+    constraints_list = _parse_constraints_list(challenge.constraints)
 
-    # 3. Resume existing open/unsubmitted individual session if one exists
+    # 3. Resume existing open individual session if one exists
     existing_open_session = (
         db.query(ChallengeSession)
         .filter(
@@ -194,15 +183,17 @@ def start_session(body: StartRequest, db: Session = Depends(get_db)):
     if existing_open_session:
         return {
             "session_id": existing_open_session.id,
-            "starter_code": existing_open_session.current_code,
+            "starter_code": existing_open_session.current_approach,
+            "current_approach": existing_open_session.current_approach,
             "challenge": {
                 "title": challenge.title,
                 "scenario": challenge.scenario,
                 "time_limit": challenge.time_limit,
+                "constraints": constraints_list,
             },
         }
 
-    starter_code = load_starter_code(challenge)
+    starter_approach = load_starter_code(challenge)
 
     session = ChallengeSession(
         challenge_id=challenge.id,
@@ -210,7 +201,7 @@ def start_session(body: StartRequest, db: Session = Depends(get_db)):
         team_id=None,
         name=body.name.strip() or "Anonymous",
         hypothesis=body.hypothesis.strip(),
-        current_code=starter_code,
+        current_approach=starter_approach,
     )
     db.add(session)
     db.commit()
@@ -223,11 +214,13 @@ def start_session(body: StartRequest, db: Session = Depends(get_db)):
 
     return {
         "session_id": session.id,
-        "starter_code": starter_code,
+        "starter_code": starter_approach,
+        "current_approach": starter_approach,
         "challenge": {
             "title": challenge.title,
             "scenario": challenge.scenario,
             "time_limit": challenge.time_limit,
+            "constraints": constraints_list,
         },
     }
 
@@ -238,11 +231,6 @@ async def send_message(
     body: ChatRequest,
     db: Session = Depends(get_db),
 ):
-    """
-    Save the user's message, call Gemini with a helper persona,
-    save the assistant reply, and return it to the frontend.
-    Broadcasting over WebSocket if team session.
-    """
     session = db.query(ChallengeSession).filter(ChallengeSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -264,16 +252,14 @@ async def send_message(
     db.add(user_msg)
     db.commit()
 
-    # Get actor name for broadcast if available
     actor_name = "Teammate"
     if body.actor_user_id:
         actor_user = db.query(User).filter(User.id == body.actor_user_id).first()
         if actor_user:
             actor_name = actor_user.name
 
-    # Broadcast user chat message if team session
     if session.team_id:
-        broadcast_to_team(
+        await broadcast_to_team(
             team_id=session.team_id,
             message={
                 "type": "chat_message",
@@ -284,7 +270,7 @@ async def send_message(
             exclude_user_id=body.actor_user_id,
         )
 
-    # 2. Call Gemini with actor's prior conversation history
+    # 2. Call Gemini sounding-board with actor's prior history & challenge constraints
     prior_messages = (
         db.query(ChatMessage)
         .filter(ChatMessage.session_id == session_id, ChatMessage.user_id == body.actor_user_id)
@@ -293,14 +279,17 @@ async def send_message(
     )
     history = [{"role": m.role, "content": m.content} for m in prior_messages if m.id != user_msg.id]
 
+    constraints_list = _parse_constraints_list(challenge.constraints if challenge else None)
+
     reply_text = await chat_with_gemini(
-        scenario=challenge.scenario or "",
-        current_code=session.current_code,
+        scenario=challenge.scenario or "" if challenge else "",
+        current_approach=session.current_approach,
         message=body.message,
+        constraints=constraints_list,
         history=history,
     )
 
-    # 3. Persist assistant message (attributed to the requesting user)
+    # 3. Persist assistant message
     assistant_msg = ChatMessage(
         session_id=session_id,
         user_id=body.actor_user_id,
@@ -310,9 +299,8 @@ async def send_message(
     db.add(assistant_msg)
     db.commit()
 
-    # Broadcast assistant reply if team session
     if session.team_id:
-        broadcast_to_team(
+        await broadcast_to_team(
             team_id=session.team_id,
             message={
                 "type": "assistant_reply",
@@ -327,21 +315,19 @@ async def send_message(
 
 @router.get("/{session_id}")
 def get_session_details(session_id: int, db: Session = Depends(get_db)):
-    """
-    Return session state including current_code, files, challenge metadata, and time_limit.
-    Used when a user or teammate reloads/opens the workspace.
-    """
     session = db.query(ChallengeSession).filter(ChallengeSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
     challenge = db.query(Challenge).filter(Challenge.id == session.challenge_id).first()
+    constraints_list = _parse_constraints_list(challenge.constraints if challenge else None)
 
     return {
         "id": session.id,
         "challenge_id": session.challenge_id,
         "team_id": session.team_id,
-        "current_code": session.current_code,
+        "current_approach": session.current_approach,
+        "current_code": session.current_approach,  # Backward-compatibility alias
         "submitted_at": session.submitted_at.isoformat() if session.submitted_at else None,
         "challenge": {
             "title": challenge.title if challenge else "",
@@ -349,16 +335,13 @@ def get_session_details(session_id: int, db: Session = Depends(get_db)):
             "scenario": challenge.scenario if challenge else "",
             "time_limit": challenge.time_limit if challenge else 45,
             "mode": challenge.mode if challenge else "individual",
+            "constraints": constraints_list,
         } if challenge else None,
     }
 
 
 @router.get("/{session_id}/messages")
 def get_messages(session_id: int, db: Session = Depends(get_db)):
-    """
-    Return all chat messages for a session, ordered by creation time.
-    Used by the team workspace to poll for new messages.
-    """
     session = db.query(ChallengeSession).filter(ChallengeSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -382,12 +365,12 @@ def get_messages(session_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{session_id}/save-code")
-def save_code(
+async def save_code(
     session_id: int,
-    body: SaveCodeRequest,
+    body: SaveApproachRequest,
     db: Session = Depends(get_db),
 ):
-    """Update ChallengeSession.current_code. Called on an interval from the editor."""
+    """Update ChallengeSession.current_approach. Called from the approach editor."""
     session = db.query(ChallengeSession).filter(ChallengeSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -397,35 +380,24 @@ def save_code(
 
     _authorize_session_actor(session, body.actor_user_id, db)
 
-    if body.files is not None:
-        session.current_code = json.dumps(body.files)
-    elif body.filename and body.code is not None:
-        try:
-            files_dict = json.loads(session.current_code or "{}")
-            if not isinstance(files_dict, dict):
-                files_dict = {}
-        except Exception:
-            files_dict = {}
-        files_dict[body.filename] = body.code
-        session.current_code = json.dumps(files_dict)
-    elif body.code is not None:
-        session.current_code = body.code
+    approach_text = body.approach if body.approach is not None else body.code
+    if approach_text is not None:
+        session.current_approach = approach_text
 
     db.commit()
 
     if session.team_id:
-        broadcast_to_team(
+        await broadcast_to_team(
             team_id=session.team_id,
             message={
-                "type": "code_update",
-                "current_code": session.current_code,
+                "type": "approach_update",
+                "current_approach": session.current_approach,
                 "user_id": body.actor_user_id,
             },
             exclude_user_id=body.actor_user_id,
         )
 
     return {"saved": True}
-
 
 
 @router.post("/{session_id}/submit")
@@ -435,8 +407,8 @@ async def submit_session(
     db: Session = Depends(get_db),
 ):
     """
-    Mark the session as submitted, evaluate the code + chat transcript with
-    Gemini, store a Submission + Evaluation row, and return submission_id.
+    Mark the session as submitted, evaluate the approach write-up with Gemini,
+    store a Submission + Evaluation row, and return submission_id.
     """
     session = db.query(ChallengeSession).filter(ChallengeSession.id == session_id).first()
     if not session:
@@ -448,7 +420,6 @@ async def submit_session(
     actor_id = body.actor_user_id if body else None
     _authorize_session_actor(session, actor_id, db, require_leader=True)
 
-    # If team session, check 2-member floor safety net
     team = None
     if session.team_id is not None:
         member_count = (
@@ -468,7 +439,7 @@ async def submit_session(
     if not challenge:
         raise HTTPException(status_code=404, detail="Challenge not found")
 
-    # 0. Compute whether the submission is late
+    # 1. Compute lateness
     started_at = session.started_at
     if started_at:
         if started_at.tzinfo is None:
@@ -480,75 +451,13 @@ async def submit_session(
     time_limit = challenge.time_limit or 45
     is_late = elapsed_minutes > time_limit
 
-    # 1. Gather all submission files
-    files_dict = {}
-    if session.current_code:
-        try:
-            parsed = json.loads(session.current_code)
-            if isinstance(parsed, dict):
-                files_dict = parsed
-        except Exception:
-            pass
-
-    if not files_dict:
-        if challenge.files:
-            files_dict = {f.filename: f.starter_content for f in challenge.files}
-        else:
-            files_dict = {"main.py": session.current_code or ""}
-
-    # 2. Run isolated execution check as scoring gate
-    exec_result = run_submission_code(
-        files=files_dict,
-        run_command=getattr(challenge, "run_command", None) or "pytest",
-        timeout_seconds=15,
-    )
-
-    # Legacy single-file mode fallback: if no ChallengeFile records exist and pytest returns 5 (no tests found), treat as passed
-    if not exec_result["passed"] and exec_result["exit_code"] == 5 and not getattr(challenge, "files", None):
-        exec_result["passed"] = True
-
-    # 3. Store execution log file
-
-    log_dir = Path(__file__).resolve().parent.parent / "uploads" / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
-    timestamp_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    log_filename = f"sub_exec_{session_id}_{timestamp_str}.log"
-    log_file_path = log_dir / log_filename
-
-    log_body = (
-        f"=== 1CODE SUBMISSION EXECUTION LOG ===\n"
-        f"Session ID: {session_id}\n"
-        f"Challenge: {challenge.title} ({challenge.slug})\n"
-        f"Command: {challenge.run_command or 'pytest'}\n"
-        f"Passed: {exec_result['passed']}\n"
-        f"Exit Code: {exec_result['exit_code']}\n"
-        f"Duration: {exec_result['duration_ms']} ms\n\n"
-        f"--- STDOUT ---\n{exec_result['stdout']}\n\n"
-        f"--- STDERR ---\n{exec_result['stderr']}\n"
-    )
-    log_file_path.write_text(log_body, encoding="utf-8")
-    relative_log_path = f"uploads/logs/{log_filename}"
-
-    # 4. If execution failed, DO NOT proceed to Gemini evaluation or create scored submission
-    if not exec_result["passed"]:
-        db.rollback()
-        return {
-            "passed": False,
-            "exit_code": exec_result["exit_code"],
-            "stdout": exec_result["stdout"],
-            "stderr": exec_result["stderr"],
-            "duration_ms": exec_result["duration_ms"],
-            "debug_log_path": relative_log_path,
-            "detail": "Execution failed. All project tests must pass before submission can be evaluated by AI.",
-        }
-
-    # 5. Mark session submitted
+    # 2. Mark session submitted
     session.submitted_at = datetime.now(timezone.utc)
     if team:
         team.status = "submitted"
     db.flush()
 
-    # 6. Assemble chat transcript & official solution
+    # 3. Assemble chat transcript & official reference solution notes
     messages = (
         db.query(ChatMessage)
         .filter(ChatMessage.session_id == session_id)
@@ -561,27 +470,15 @@ async def submit_session(
     ]
     chat_transcript = "\n\n".join(transcript_parts) if transcript_parts else "(no chat messages)"
 
-    try:
-        official_solution = read_official_solution(challenge)
-    except Exception:
-        official_solution = "No official solution reference is available for this challenge."
+    official_solution_notes = challenge.official_solution or "No reference notes available for this challenge."
 
-    # 7. Ground Gemini evaluation with code & execution output
-    full_user_code_with_exec = (
-        f"{session.current_code or '(no code submitted)'}\n\n"
-        f"--- REAL EXECUTION RUN RESULTS ---\n"
-        f"Exit Code: {exec_result['exit_code']}\n"
-        f"Stdout:\n{exec_result['stdout']}\n"
-        f"Stderr:\n{exec_result['stderr']}\n"
-    )
-
+    # 4. Run Gemini evaluation directly on submitted approach text
     try:
         gemini_result = await evaluate_submission_with_gemini(
-            submission=None,
+            approach_text=session.current_approach or "(no approach written)",
             challenge=challenge,
-            db_log_content=chat_transcript,
-            user_code_content=full_user_code_with_exec,
-            official_solution_content=official_solution,
+            chat_transcript=chat_transcript,
+            official_solution_content=official_solution_notes,
             hypothesis_content=session.hypothesis or "(no hypothesis provided)",
             is_late=is_late,
             elapsed_minutes=elapsed_minutes,
@@ -594,7 +491,7 @@ async def submit_session(
             detail=f"Evaluation failed: {str(e)}",
         )
 
-    # 8. Store Submission
+    # 5. Store Submission
     sub_name = team.name if team else session.name
     sub_user_id = None if team else session.user_id
     sub_team_id = team.id if team else None
@@ -605,36 +502,27 @@ async def submit_session(
         team_id=sub_team_id,
         challenge_id=challenge.id,
         fixed_project_path=None,
-        debug_log_path=relative_log_path,
+        debug_log_path=None,
         late=is_late,
-        problem_understanding_score=gemini_result.get("problem_solving", 0),
+        topic_knowledge_score=gemini_result.get("topic_knowledge", 0),
         prompt_quality_score=gemini_result.get("prompt_quality", 0),
-        ai_collaboration_score=gemini_result.get("ai_collaboration", 0),
-        code_correctness_score=gemini_result.get("code_correctness", 0),
+        open_source_usage_score=gemini_result.get("open_source_usage", 0),
+        optimization_score=gemini_result.get("optimization", 0),
         overall_score=gemini_result.get("total_score", 0),
+        approach_text=session.current_approach or "",
         feedback=gemini_result.get("overall_feedback", ""),
     )
     db.add(submission)
     db.flush()
 
-    # 9. Store SubmissionFile rows
-    for filename, content in files_dict.items():
-        db.add(
-            SubmissionFile(
-                submission_id=submission.id,
-                filename=filename,
-                content=content or "",
-            )
-        )
-
-    # 10. Store Evaluation
+    # 6. Store Evaluation
     evaluation = Evaluation(
         submission_id=submission.id,
         hypothesis=gemini_result.get("hypothesis", 0),
         prompt_quality=gemini_result.get("prompt_quality", 0),
-        ai_collaboration=gemini_result.get("ai_collaboration", 0),
-        code_correctness=gemini_result.get("code_correctness", 0),
-        problem_solving=gemini_result.get("problem_solving", 0),
+        open_source_usage=gemini_result.get("open_source_usage", 0),
+        optimization=gemini_result.get("optimization", 0),
+        topic_knowledge=gemini_result.get("topic_knowledge", 0),
         total_score=gemini_result.get("total_score", 0),
         strengths=gemini_result.get("strengths", []),
         improvements=gemini_result.get("improvements", []),
@@ -644,7 +532,7 @@ async def submit_session(
     db.commit()
 
     if team:
-        broadcast_to_team(
+        await broadcast_to_team(
             team_id=team.id,
             message={
                 "type": "team_submitted",
@@ -655,48 +543,4 @@ async def submit_session(
     return {
         "passed": True,
         "submission_id": submission.id,
-        "stdout": exec_result["stdout"],
-        "stderr": exec_result["stderr"],
     }
-
-
-@router.post("/{session_id}/check-code")
-async def check_code(session_id: int, db: Session = Depends(get_db)):
-    session = db.query(ChallengeSession).filter(ChallengeSession.id == session_id).first()
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-    challenge = db.query(Challenge).filter(Challenge.id == session.challenge_id).first()
-    if not challenge:
-        raise HTTPException(status_code=404, detail="Challenge not found")
-
-    files = {}
-    if session.current_code:
-        try:
-            parsed = json.loads(session.current_code)
-            if isinstance(parsed, dict):
-                files = parsed
-            else:
-                files = {"main.py": str(session.current_code)}
-        except Exception:
-            files = {"main.py": str(session.current_code)}
-
-    if not files:
-        if getattr(challenge, "files", None):
-            files = {f.filename: f.starter_content for f in challenge.files}
-        else:
-            files = {"main.py": session.current_code or ""}
-
-    run_cmd = getattr(challenge, "run_command", None) or "python main.py"
-    result = run_submission_code(
-        files=files,
-        run_command=run_cmd,
-        timeout_seconds=15,
-    )
-    return {
-        "passed": result["passed"],
-        "stdout": result["stdout"],
-        "stderr": result["stderr"],
-        "exit_code": result.get("exit_code"),
-    }
-
-

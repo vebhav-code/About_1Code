@@ -1,21 +1,8 @@
+import json
 from datetime import datetime
 from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
-
-
-class ChallengeFileInput(BaseModel):
-    filename: str
-    starter_content: str
-    solution_content: str
-    file_order: int = 0
-    language: Optional[str] = None
-
-    @field_validator("filename")
-    @classmethod
-    def validate_filename(cls, value: str) -> str:
-        from utils.file_validation import validate_challenge_filename
-        return validate_challenge_filename(value)
 
 
 class AdminChallengeBase(BaseModel):
@@ -26,10 +13,8 @@ class AdminChallengeBase(BaseModel):
     rules: str
     time_limit: int
     category: str
-    starter_code: Optional[str] = ""
     official_solution: Optional[str] = ""
-    run_command: Optional[str] = "pytest"
-    files: list[ChallengeFileInput] = []
+    constraints: list[str] = []
     mode: Literal["individual", "team"] = "individual"
     team_size: int = 1
     challenge_format: Literal["debug", "build"] = "debug"
@@ -41,8 +26,6 @@ class AdminChallengeCreate(AdminChallengeBase):
     @field_validator("slug")
     @classmethod
     def sanitize_slug(cls, value: str) -> str:
-        # Strip whitespace (spaces, tabs, newlines) that can sneak in from
-        # copy-pasting, and collapse to a clean, database-safe slug.
         cleaned = value.strip()
         if not cleaned:
             raise ValueError("Slug cannot be empty or whitespace only")
@@ -68,10 +51,8 @@ class AdminChallengeUpdate(BaseModel):
     time_limit: Optional[int] = None
     is_active: Optional[bool] = None
     category: Optional[str] = None
-    starter_code: Optional[str] = None
     official_solution: Optional[str] = None
-    run_command: Optional[str] = None
-    files: Optional[list[ChallengeFileInput]] = None
+    constraints: Optional[list[str]] = None
     mode: Optional[Literal["individual", "team"]] = None
     team_size: Optional[int] = None
     challenge_format: Optional[Literal["debug", "build"]] = None
@@ -105,18 +86,27 @@ class AdminChallengeResponse(BaseModel):
     is_active: bool
     created_at: datetime
     category: Optional[str] = ""
-    run_command: Optional[str] = "pytest"
-    files: list[ChallengeFileInput] = []
+    constraints: list[str] = []
     mode: str = "individual"
     team_size: int = 1
     challenge_format: str = "debug"
 
+    @field_validator("constraints", mode="before")
+    @classmethod
+    def parse_constraints(cls, v):
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                return parsed if isinstance(parsed, list) else []
+            except Exception:
+                return []
+        if isinstance(v, list):
+            return v
+        return []
+
 
 class AdminChallengeDetailResponse(AdminChallengeResponse):
-    starter_code: str = ""
     official_solution: str = ""
-
-
 
 
 class AdminChallengeDeleteResponse(BaseModel):

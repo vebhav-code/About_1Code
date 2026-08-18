@@ -37,8 +37,11 @@ let currentChallengeFormat = "debug";
 function ssKey(suffix) { return `challenge_${suffix}:${CHALLENGE_SLUG}`; }
 
 let TEAM_ID = params.get('team_id') || sessionStorage.getItem(ssKey('team_id')) || null;
-if (TEAM_ID) sessionStorage.setItem(ssKey('team_id'), TEAM_ID);
 let teamWs = null;
+let teamWsPingInterval = null;
+let teamWsReconnectTimeout = null;
+let teamWsReconnectDelay = 1000;
+let teamWsIntentionalClose = false;
 let rtcPeers = {};
 let localAudioStream = null;
 let isMicMuted = true;
@@ -352,30 +355,65 @@ function renderFileTabs() {
 }
 
 function addNewProjectFile(filenameInput = null) {
-    let name = filenameInput;
-    if (!name) {
-        name = prompt("Enter new filename (e.g. utils.py, auth.py, test_main.py):");
+    if (filenameInput) {
+        createFileWithName(filenameInput);
+        return;
     }
-    if (!name || !name.trim()) return;
-    name = name.trim();
+    showFilenameModal((name) => {
+        if (name) createFileWithName(name);
+    });
+}
 
+function showFilenameModal(onConfirm) {
+    const modal = document.createElement("div");
+    modal.className = "filename-modal-overlay";
+    modal.innerHTML = `
+        <div class="filename-modal">
+            <label>New filename</label>
+            <input type="text" id="newFilenameInput" placeholder="e.g. utils.py" autofocus />
+            <div class="filename-modal-actions">
+                <button type="button" id="filenameCancelBtn">Cancel</button>
+                <button type="button" id="filenameConfirmBtn">Create</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    const input = modal.querySelector("#newFilenameInput");
+    input.focus();
+
+    const cleanup = () => modal.remove();
+    modal.querySelector("#filenameCancelBtn").addEventListener("click", cleanup);
+    modal.querySelector("#filenameConfirmBtn").addEventListener("click", () => {
+        const value = input.value.trim();
+        cleanup();
+        onConfirm(value);
+    });
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();  // stops Enter from bubbling to anything else on the page
+            const value = input.value.trim();
+            cleanup();
+            onConfirm(value);
+        }
+        if (e.key === "Escape") cleanup();
+    });
+}
+
+function createFileWithName(name) {
+    if (!name) return;
     if (name.includes("/") || name.includes("\\") || name.includes("..")) {
         alert("Invalid filename. Filename cannot contain path separators.");
         return;
     }
-
     if (projectFiles[name] !== undefined) {
         switchActiveFile(name);
         return;
     }
-
     const defaultContent = name.endsWith(".py") ? `# ${name}\n\n` : "";
     projectFiles[name] = defaultContent;
     sessionStorage.setItem(ssKey('project_files'), JSON.stringify(projectFiles));
-
     switchActiveFile(name);
     saveCode();
-
     if (teamWs && teamWs.readyState === WebSocket.OPEN) {
         teamWs.send(JSON.stringify({
             type: "file_create",
@@ -403,6 +441,7 @@ function switchActiveFile(newFilename) {
         lastSyncedCode = editor.value;
     }
     renderFileTabs();
+    renderRemoteCursors();
 
     if (teamWs && teamWs.readyState === WebSocket.OPEN) {
         teamWs.send(JSON.stringify({
@@ -837,6 +876,7 @@ function renderRemoteCursors() {
     Object.entries(remoteCursors).forEach(([userId, cursor]) => {
         if (parseInt(userId, 10) === currentUser.user_id) return;
         if (cursor.selection_start == null) return;
+        if (cursor.filename !== activeFilename) return;  // NEW — only show if same file
         const pos = Math.min(cursor.selection_start, editor.value.length);
         const coords = getCaretCoordinates(editor, pos);
         const cursorEl = document.createElement("div");
@@ -1109,7 +1149,12 @@ function initializeSubmitBtn() {
             if (timerInterval)      clearInterval(timerInterval);
             if (saveInterval)       clearInterval(saveInterval);
             if (chatPollingInterval) clearInterval(chatPollingInterval);
-            if (teamWs && teamWs.readyState === WebSocket.OPEN) teamWs.close();
+            if (teamWs) {
+                teamWsIntentionalClose = true;
+                if (teamWsPingInterval) clearInterval(teamWsPingInterval);
+                if (teamWsReconnectTimeout) clearTimeout(teamWsReconnectTimeout);
+                if (teamWs.readyState === WebSocket.OPEN) teamWs.close();
+            }
 
             // Redirect to result page
             window.location.href = `result.html?id=${data.submission_id}`;
@@ -1142,12 +1187,61 @@ function escapeHtml(str) {
 // Team Workspace
 // ===========================================================================
 
+async function resyncSessionStateOnReconnect() {
+    const activeSessionId = sessionId || sessionStorage.getItem(ssKey('session_id'));
+    if (!activeSessionId) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/sessions/${activeSessionId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const serverApproach = data.current_approach || data.current_code || "";
+
+        let parsedFiles = parseStarterFiles(serverApproach);
+        if (!parsedFiles && serverApproach) {
+            parsedFiles = { "main.py": serverApproach };
+        }
+        if (parsedFiles) {
+            projectFiles = parsedFiles;
+            sessionStorage.setItem(ssKey('project_files'), JSON.stringify(projectFiles));
+            if (!activeFilename || !(activeFilename in projectFiles)) {
+                activeFilename = Object.keys(projectFiles)[0] || null;
+                sessionStorage.setItem(ssKey('active_filename'), activeFilename || "");
+            }
+            const editor = document.getElementById("codeEditor");
+            if (editor && activeFilename) {
+                const latestContent = projectFiles[activeFilename] || "";
+                if (editor.value !== latestContent) {
+                    editor.value = latestContent;
+                    sessionStorage.setItem(ssKey('code'), latestContent);
+                }
+                lastSyncedCode = editor.value;
+                lastSavedCode = editor.value;
+            }
+            renderFileTabs();
+        }
+        console.log("[Team WS] Resynced session state on reconnect");
+    } catch (err) {
+        console.warn("[Team WS] Failed to resync session state on reconnect:", err);
+    }
+}
+
 function setupTeamWorkspace() {
-    // RECONNECT CHOICE: We reconnect the WebSocket on the workspace page rather
-    // than trying to reuse the lobby's connection.  Browser navigation closes WS
-    // connections, and passing a live socket across a full-page redirect is not
-    // practical in a plain-HTML MPA.  The team_id is kept in sessionStorage so
-    // this works even if the user manually refreshes the workspace page.
+    if (teamWsPingInterval) {
+        clearInterval(teamWsPingInterval);
+        teamWsPingInterval = null;
+    }
+    if (teamWsReconnectTimeout) {
+        clearTimeout(teamWsReconnectTimeout);
+        teamWsReconnectTimeout = null;
+    }
+
+    if (teamWs && (teamWs.readyState === WebSocket.OPEN || teamWs.readyState === WebSocket.CONNECTING)) {
+        teamWsIntentionalClose = true;
+        try { teamWs.close(); } catch (e) {}
+    }
+
+    teamWsIntentionalClose = false;
+
     const wsProtocol = API_BASE.startsWith("https") ? "wss:" : "ws:";
     const wsHost = API_BASE.replace(/^https?:\/\//, "");
     teamWs = new WebSocket(`${wsProtocol}//${wsHost}/api/teams/${TEAM_ID}/ws?user_id=${currentUser.user_id}`);
@@ -1155,29 +1249,68 @@ function setupTeamWorkspace() {
     teamWs.onopen = () => {
         console.log("[Team WS] connected in workspace");
         updateConnectionDot(true);
+        teamWsReconnectDelay = 1000;
+
+        // Client-side heartbeat ping every 25 seconds
+        if (teamWsPingInterval) clearInterval(teamWsPingInterval);
+        teamWsPingInterval = setInterval(() => {
+            if (teamWs && teamWs.readyState === WebSocket.OPEN) {
+                teamWs.send(JSON.stringify({ type: "ping" }));
+            }
+        }, 25000);
+
         // Send a join announcement so teammates' presence bars update
         teamWs.send(JSON.stringify({
             type: "member_joined",
             user_id: currentUser.user_id,
             name: currentUser.name
         }));
+
+        // Resync state on reconnect to pull authoritative current code
+        const activeSessionId = sessionId || sessionStorage.getItem(ssKey('session_id'));
+        if (activeSessionId) {
+            resyncSessionStateOnReconnect();
+        }
     };
 
     teamWs.onmessage = (e) => {
         try {
             const msg = JSON.parse(e.data);
+            if (msg.type === "pong") return;
             handleTeamWsMessage(msg);
         } catch (err) {
             console.error("[Team WS] parse error", err);
         }
     };
 
-    teamWs.onclose = () => {
-        console.log("[Team WS] closed");
+    const scheduleReconnect = () => {
         updateConnectionDot(false);
+        if (teamWsPingInterval) {
+            clearInterval(teamWsPingInterval);
+            teamWsPingInterval = null;
+        }
+        const activeSessionId = sessionId || sessionStorage.getItem(ssKey('session_id'));
+        if (teamWsIntentionalClose || !activeSessionId) return;
+
+        if (teamWsReconnectTimeout) clearTimeout(teamWsReconnectTimeout);
+        console.log(`[Team WS] Disconnected. Reconnecting in ${teamWsReconnectDelay}ms...`);
+        teamWsReconnectTimeout = setTimeout(() => {
+            const currentSessionId = sessionId || sessionStorage.getItem(ssKey('session_id'));
+            if (!teamWsIntentionalClose && currentSessionId) {
+                setupTeamWorkspace();
+            }
+        }, teamWsReconnectDelay);
+        teamWsReconnectDelay = Math.min(teamWsReconnectDelay * 2, 10000);
     };
 
-    teamWs.onerror = () => updateConnectionDot(false);
+    teamWs.onclose = () => {
+        console.log("[Team WS] closed");
+        scheduleReconnect();
+    };
+
+    teamWs.onerror = () => {
+        scheduleReconnect();
+    };
 
     const editor = document.getElementById("codeEditor");
     if (editor) {
@@ -1215,6 +1348,7 @@ function setupTeamWorkspace() {
                     type: "cursor_move",
                     user_id: currentUser.user_id,
                     name: currentUser.name,
+                    filename: activeFilename,
                     selection_start: editor.selectionStart,
                     selection_end: editor.selectionEnd
                 }));
@@ -1336,6 +1470,7 @@ function handleTeamWsMessage(msg) {
             break;
 
         case "team_submitted":
+            console.log("[1Code] Received team_submitted broadcast", msg);
             setTypingIndicator(false);
             sessionStorage.removeItem(ssKey('session_id'));
             sessionStorage.removeItem(ssKey('team_id'));
@@ -1344,7 +1479,12 @@ function handleTeamWsMessage(msg) {
             if (timerInterval)       clearInterval(timerInterval);
             if (saveInterval)        clearInterval(saveInterval);
             if (chatPollingInterval) clearInterval(chatPollingInterval);
-            if (teamWs && teamWs.readyState === WebSocket.OPEN) teamWs.close();
+            if (teamWs) {
+                teamWsIntentionalClose = true;
+                if (teamWsPingInterval) clearInterval(teamWsPingInterval);
+                if (teamWsReconnectTimeout) clearTimeout(teamWsReconnectTimeout);
+                if (teamWs.readyState === WebSocket.OPEN) teamWs.close();
+            }
             if (msg.submission_id) {
                 window.location.href = `result.html?id=${msg.submission_id}`;
             }
@@ -1385,6 +1525,7 @@ function handleTeamWsMessage(msg) {
             if (msg.user_id === currentUser.user_id) break;
             remoteCursors[msg.user_id] = {
                 name: msg.name,
+                filename: msg.filename,
                 selection_start: msg.selection_start,
                 selection_end: msg.selection_end
             };

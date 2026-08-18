@@ -10,7 +10,6 @@ const API_BASE = (window.location.hostname === "127.0.0.1" || window.location.ho
   : "https://about-1code.onrender.com";
 
 document.addEventListener("DOMContentLoaded", async () => {
-    // Support both ?id=N (session submit redirect) and legacy sessionStorage path
     const urlParams    = new URLSearchParams(window.location.search);
     const submissionId = urlParams.get("id") || sessionStorage.getItem("submission_id");
 
@@ -25,10 +24,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     showLoading(true);
 
     try {
-        // --- Try fetching an existing evaluation first (GET) ---
         let res = await fetch(`${API_BASE}/api/evaluate/${submissionId}`);
 
-        // If none exists yet (404), trigger the Gemini evaluation (POST)
         if (res.status === 404) {
             res = await fetch(
                 `${API_BASE}/api/evaluate/${submissionId}`,
@@ -54,11 +51,9 @@ document.addEventListener("DOMContentLoaded", async () => {
    Render evaluation data into the HTML
 =========================================== */
 function renderResult(data) {
-    // --- Submitted By ---
     const submittedBy = document.getElementById("submittedBy");
     if (submittedBy) {
         if (data.team_name) {
-            // Team submission — show team name + member avatar chips
             const members = data.members || [];
             const memberChips = members.map(m => {
                 const initials = (m.name || "?").substring(0, 2).toUpperCase();
@@ -81,26 +76,21 @@ function renderResult(data) {
                 `👥 Team <strong>${escapeHtml(data.team_name)}</strong>` +
                 (memberChips ? `<div style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px; justify-content:center;">${memberChips}</div>` : "");
         } else if (data.user_name) {
-            // Individual submission
             submittedBy.innerHTML = `👤 Submitted by <strong>${escapeHtml(data.user_name)}</strong>`;
         }
-        // else: no name info — leave empty (hidden by default since h2 is empty)
     }
 
-    // --- Overall score circle ---
     const scoreSpan = document.querySelector(".score-circle span");
     if (scoreSpan) scoreSpan.textContent = data.total_score;
 
-    // --- Score circle label ---
     const scoreLabel = document.querySelector(".overall-score-card > p");
     if (scoreLabel) {
-        if (data.total_score >= 90) scoreLabel.textContent = "Outstanding Debugging Performance";
-        else if (data.total_score >= 75) scoreLabel.textContent = "Great Debugging Performance";
-        else if (data.total_score >= 60) scoreLabel.textContent = "Good Debugging Performance";
-        else scoreLabel.textContent = "Keep Practising — You'll Get There";
+        if (data.total_score >= 90) scoreLabel.textContent = "Outstanding Architecture Proposal";
+        else if (data.total_score >= 75) scoreLabel.textContent = "Great Architecture Proposal";
+        else if (data.total_score >= 60) scoreLabel.textContent = "Good Architecture Proposal";
+        else scoreLabel.textContent = "Keep Practising — Refine Your Strategy";
     }
 
-    // --- Late submission badge ---
     if (data.late) {
         let lateBadge = document.getElementById("lateBadge");
         if (!lateBadge) {
@@ -115,14 +105,12 @@ function renderResult(data) {
         lateBadge.innerHTML = `<svg viewBox="0 0 24 24" fill="none" style="width:14px;height:14px;"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Submitted after time limit`;
     }
 
-    // --- Score breakdown rows ---
-    const rows = document.querySelectorAll(".score-row");
+    const rows = document.querySelectorAll("#scoreBreakdownCard .score-row");
     const breakdown = [
-        { label: "Hypothesis Quality",  score: data.hypothesis,       max: 20 },
-        { label: "Prompt Quality",      score: data.prompt_quality,   max: 25 },
-        { label: "AI Collaboration",    score: data.ai_collaboration, max: 20 },
-        { label: "Code Correctness",    score: data.code_correctness, max: 25 },
-        { label: "Problem Solving",     score: data.problem_solving,  max: 10 },
+        { label: "Optimization against Constraints", score: data.optimization != null ? data.optimization : (data.code_correctness || 0), max: 25 },
+        { label: "Open-Source Tools & Libraries",   score: data.open_source_usage != null ? data.open_source_usage : (data.ai_collaboration || 0), max: 25 },
+        { label: "Topic & Domain Knowledge",        score: data.topic_knowledge != null ? data.topic_knowledge : (data.problem_understanding || data.hypothesis || 0), max: 25 },
+        { label: "Approach Write-up Quality",       score: data.prompt_quality != null ? data.prompt_quality : 0, max: 25 },
     ];
 
     rows.forEach((row, i) => {
@@ -130,30 +118,26 @@ function renderResult(data) {
         const labelEl = row.querySelector("span");
         const valueEl = row.querySelector("strong");
         if (labelEl) labelEl.textContent = breakdown[i].label;
-        if (valueEl)
-            valueEl.textContent = `${breakdown[i].score} / ${breakdown[i].max}`;
+        if (valueEl) valueEl.textContent = `${breakdown[i].score} / ${breakdown[i].max}`;
     });
 
-    // --- Strengths list ---
     const strengthsHeading = findHeading("Strengths");
     if (strengthsHeading) {
         const ul = getOrCreateUl(strengthsHeading);
         ul.innerHTML = (data.strengths || [])
             .map((s) => `<li>${escapeHtml(s)}</li>`)
-            .join("");
+            .join("") || "<li>No strengths noted.</li>";
     }
 
-    // --- Improvements / Suggestions list ---
     const improvementsHeading =
         findHeading("Suggestions") || findHeading("Improvements");
     if (improvementsHeading) {
         const ul = getOrCreateUl(improvementsHeading);
         ul.innerHTML = (data.improvements || [])
             .map((s) => `<li>${escapeHtml(s)}</li>`)
-            .join("");
+            .join("") || "<li>No suggestions noted.</li>";
     }
 
-    // --- Overall feedback paragraph ---
     if (data.overall_feedback) {
         let feedbackEl = document.getElementById("overallFeedback");
         if (!feedbackEl) {
@@ -170,9 +154,6 @@ function renderResult(data) {
     }
 }
 
-/* ===========================================
-   Helpers
-=========================================== */
 function findHeading(text) {
     return [...document.querySelectorAll("h3")].find(
         (el) => el.textContent.trim() === text

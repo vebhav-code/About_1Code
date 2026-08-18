@@ -21,6 +21,10 @@ if (!session || !userId || !TEAM_ID) {
 }
 
 let ws = null;
+let wsPingInterval = null;
+let wsReconnectTimeout = null;
+let wsReconnectDelay = 1000;
+let wsIntentionalClose = false;
 let teamData = null;
 let isLeader = false;
 let micStream = null;
@@ -109,26 +113,75 @@ function setupInviteLink() {
 }
 
 function connectWebSocket() {
-  // Using ws:// or wss:// based on current protocol, but since API_BASE might have http:
+  if (wsPingInterval) {
+    clearInterval(wsPingInterval);
+    wsPingInterval = null;
+  }
+  if (wsReconnectTimeout) {
+    clearTimeout(wsReconnectTimeout);
+    wsReconnectTimeout = null;
+  }
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+    wsIntentionalClose = true;
+    try { ws.close(); } catch (e) {}
+  }
+
+  wsIntentionalClose = false;
+
   const wsProtocol = API_BASE.startsWith("https") ? "wss:" : "ws:";
   const wsHost = API_BASE.replace(/^https?:\/\//, "");
   ws = new WebSocket(`${wsProtocol}//${wsHost}/api/teams/${TEAM_ID}/ws?user_id=${userId}`);
 
   ws.onopen = () => {
     console.log("Team WS connected");
+    wsReconnectDelay = 1000;
+
+    // Heartbeat ping every 25s
+    if (wsPingInterval) clearInterval(wsPingInterval);
+    wsPingInterval = setInterval(() => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "ping" }));
+      }
+    }, 25000);
+
+    // Resync team roster data on reconnect
+    fetchTeamData();
   };
 
   ws.onmessage = (e) => {
     try {
       const msg = JSON.parse(e.data);
+      if (msg.type === "pong") return;
       handleWsMessage(msg);
     } catch (err) {
       console.error("WS Parse Error", err);
     }
   };
 
+  const scheduleReconnect = () => {
+    if (wsPingInterval) {
+      clearInterval(wsPingInterval);
+      wsPingInterval = null;
+    }
+    if (wsIntentionalClose) return;
+
+    if (wsReconnectTimeout) clearTimeout(wsReconnectTimeout);
+    console.log(`[Team Lobby WS] Reconnecting in ${wsReconnectDelay}ms...`);
+    wsReconnectTimeout = setTimeout(() => {
+      if (!wsIntentionalClose) {
+        connectWebSocket();
+      }
+    }, wsReconnectDelay);
+    wsReconnectDelay = Math.min(wsReconnectDelay * 2, 10000);
+  };
+
   ws.onclose = () => {
     console.log("Team WS closed");
+    scheduleReconnect();
+  };
+
+  ws.onerror = () => {
+    scheduleReconnect();
   };
 }
 
@@ -176,6 +229,8 @@ function handleWsMessage(msg) {
     }
     // Stamp context so the slug-mismatch guard in contest.js is a no-op
     sessionStorage.setItem('challenge_context', JSON.stringify({ slug: CHALLENGE_SLUG }));
+    wsIntentionalClose = true;
+    if (ws && ws.readyState === WebSocket.OPEN) ws.close();
     window.location.href = `contest.html?slug=${encodeURIComponent(CHALLENGE_SLUG)}&team_id=${TEAM_ID}`;
   }
 }
@@ -221,6 +276,8 @@ function setupStartButton() {
       }
       // Stamp context so the slug-mismatch guard in contest.js is a no-op
       sessionStorage.setItem('challenge_context', JSON.stringify({ slug: CHALLENGE_SLUG }));
+      wsIntentionalClose = true;
+      if (ws && ws.readyState === WebSocket.OPEN) ws.close();
       window.location.href = `contest.html?slug=${encodeURIComponent(CHALLENGE_SLUG)}&team_id=${TEAM_ID}`;
       
     } catch (err) {

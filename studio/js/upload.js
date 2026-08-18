@@ -26,46 +26,54 @@ export function initUpload() {
     updateTeamSizeVisibility();
   }
 
-  const addFileBtn = document.getElementById('add-file-btn');
-  const filesContainer = document.getElementById('project-files-container');
-  let fileCount = 0;
+  const addConstraintBtn = document.getElementById('add-constraint-btn');
+  const constraintsContainer = document.getElementById('constraints-container');
 
-  function createFileCard(filename = '', starterContent = '', solutionContent = '') {
-    fileCount++;
-    const card = document.createElement('div');
-    card.className = 'file-card';
-    card.style.cssText = 'border:1px solid var(--border); border-radius:6px; padding:12px; background:rgba(0,0,0,0.2); position:relative;';
-    card.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-        <label style="font-weight:600; font-size:0.85rem;">Filename</label>
-        <button type="button" class="button remove-file-btn" style="padding:2px 8px; font-size:0.75rem; background:rgba(239,68,68,0.2); color:#fca5a5; border:1px solid rgba(239,68,68,0.4);">Delete File</button>
-      </div>
-      <input type="text" class="file-name-input form-control" value="${filename}" placeholder="e.g. api.py or validator.py" required style="width:100%; padding:6px; margin-bottom:10px; font-family:monospace; font-size:0.85rem;" />
-      
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-        <div>
-          <label style="font-weight:600; font-size:0.8rem; display:block; margin-bottom:4px;">Starter Content (Broken)</label>
-          <textarea class="file-starter-input form-control" rows="6" placeholder="Broken starter code teams will start with..." style="width:100%; padding:6px; font-family:monospace; font-size:0.8rem;">${starterContent}</textarea>
-        </div>
-        <div>
-          <label style="font-weight:600; font-size:0.8rem; display:block; margin-bottom:4px;">Official Solution (Fixed)</label>
-          <textarea class="file-solution-input form-control" rows="6" placeholder="Reference solution code..." style="width:100%; padding:6px; font-family:monospace; font-size:0.8rem;">${solutionContent}</textarea>
-        </div>
-      </div>
+  function createConstraintRow(text = '') {
+    if (!constraintsContainer) return;
+    const row = document.createElement('div');
+    row.className = 'constraint-row';
+    row.style.cssText = 'display:flex; gap:8px; align-items:center;';
+    row.innerHTML = `
+      <input type="text" class="constraint-input form-control" value="${text.replace(/"/g, '&quot;')}" placeholder="e.g. Must work fully offline" style="flex:1; padding:6px 10px; border:1px solid var(--border); border-radius:4px; font-size:0.85rem;" />
+      <button type="button" class="button remove-constraint-btn" style="padding:4px 8px; font-size:0.75rem; background:rgba(239,68,68,0.2); color:#fca5a5; border:1px solid rgba(239,68,68,0.4);">✕</button>
     `;
 
-    card.querySelector('.remove-file-btn').addEventListener('click', () => {
-      card.remove();
+    row.querySelector('.remove-constraint-btn').addEventListener('click', () => {
+      row.remove();
     });
 
-    filesContainer.appendChild(card);
+    constraintsContainer.appendChild(row);
   }
 
-  if (addFileBtn && filesContainer) {
-    addFileBtn.addEventListener('click', () => createFileCard());
-    // Pre-populate with 2 initial file cards for convenience (e.g. api.py and test_api.py)
-    createFileCard('api.py', '# Write buggy API code here\n', '# Correct API code\n');
-    createFileCard('test_api.py', 'def test_solution():\n    assert True\n', 'def test_solution():\n    assert True\n');
+  if (addConstraintBtn && constraintsContainer) {
+    addConstraintBtn.addEventListener('click', () => createConstraintRow());
+    // Pre-populate with default constraints for convenience
+    createConstraintRow('Must work fully offline');
+    createConstraintRow('Must support multiple languages');
+    createConstraintRow('Response latency should be low');
+  }
+
+  const titleInput = document.getElementById('title');
+  const slugInput = document.getElementById('slug');
+  let userEditedSlug = false;
+
+  if (slugInput) {
+    slugInput.addEventListener('input', () => {
+      userEditedSlug = true;
+    });
+  }
+
+  if (titleInput && slugInput) {
+    titleInput.addEventListener('input', () => {
+      if (!userEditedSlug) {
+        slugInput.value = titleInput.value
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)+/g, '');
+      }
+    });
   }
 
   form.addEventListener('submit', async (e) => {
@@ -83,28 +91,15 @@ export function initUpload() {
       team_size = 1;
     }
 
-    // Collect project files from cards
-    const fileCards = filesContainer ? Array.from(filesContainer.querySelectorAll('.file-card')) : [];
-    const filesList = [];
-
-    fileCards.forEach((card, index) => {
-      const nameInput = card.querySelector('.file-name-input');
-      const starterInput = card.querySelector('.file-starter-input');
-      const solutionInput = card.querySelector('.file-solution-input');
-      const nameVal = (nameInput?.value || '').trim();
-      if (nameVal) {
-        filesList.push({
-          filename: nameVal,
-          starter_content: starterInput?.value || '',
-          solution_content: solutionInput?.value || '',
-          file_order: index
-        });
-      }
-    });
+    // Collect constraints list
+    const constraintInputs = constraintsContainer ? Array.from(constraintsContainer.querySelectorAll('.constraint-input')) : [];
+    const constraintsList = constraintInputs
+      .map(input => (input.value || '').trim())
+      .filter(val => val.length > 0);
 
     const payload = {
       title: formData.get('title'),
-      slug: formData.get('slug'),
+      slug: (formData.get('slug') || '').trim(),
       category: formData.get('category'),
       difficulty: formData.get('difficulty'),
       time_limit: parseInt(formData.get('time_limit'), 10) || 45,
@@ -113,22 +108,23 @@ export function initUpload() {
       description: formData.get('description'),
       scenario: formData.get('scenario'),
       rules: formData.get('rules'),
-      run_command: formData.get('run_command') || 'pytest',
-      files: filesList,
-      starter_code: formData.get('starter_code') || '',
+      constraints: constraintsList,
       official_solution: formData.get('official_solution') || ''
     };
 
     try {
       await createChallenge(payload);
-      window.showToast('Challenge created successfully!', 'success');
+      if (window.showToast) window.showToast('Challenge created successfully!', 'success');
       window.location.hash = 'challenges';
     } catch (error) {
+      const msg = error.message || 'Failed to create challenge';
       if (errorMsg) {
-        errorMsg.textContent = error.message || 'Failed to create challenge';
+        errorMsg.textContent = msg;
         errorMsg.hidden = false;
-      } else {
-        window.showToast(error.message, 'error');
+        errorMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      if (window.showToast) {
+        window.showToast(msg, 'error');
       }
       if (submitBtn) {
         submitBtn.disabled = false;
@@ -137,4 +133,3 @@ export function initUpload() {
     }
   });
 }
-

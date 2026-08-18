@@ -96,6 +96,8 @@ def get_challenge_details(slug: str, db: Session = Depends(get_db)):
     challenge = _get_challenge_by_slug(slug, db)
     if challenge is None:
         raise HTTPException(status_code=404, detail="Challenge Not Found")
+    from services.gemini_service import _parse_constraints_list
+    constraints_list = _parse_constraints_list(challenge.constraints)
     readme = (
         f"# {challenge.title}\n\n"
         f"**Category:** {challenge.category or 'General'}\n"
@@ -108,6 +110,7 @@ def get_challenge_details(slug: str, db: Session = Depends(get_db)):
         "difficulty": challenge.difficulty, "category": challenge.category,
         "scenario": challenge.scenario, "rules": challenge.rules,
         "time_limit": challenge.time_limit, "readme": readme,
+        "constraints": constraints_list,
         "mode": challenge.mode or "individual",
         "team_size": challenge.team_size if challenge.team_size is not None else 1,
     }
@@ -119,10 +122,14 @@ def download_challenge(slug: str, db: Session = Depends(get_db)):
     challenge = _get_challenge_by_slug(slug, db)
     if challenge is None:
         raise HTTPException(status_code=404, detail="Challenge Not Found")
+    from services.gemini_service import _parse_constraints_list
+    constraints_list = _parse_constraints_list(challenge.constraints)
+    constraints_str = "\n".join(f"- {c}" for c in constraints_list) if constraints_list else "No constraints specified."
+
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("README.md", f"# {challenge.title}\n\n{challenge.scenario}\n\n## Rules\n{challenge.rules}")
-        zf.writestr("starter_code.txt", challenge.starter_code or "")
+        zf.writestr("constraints.txt", constraints_str)
     buf.seek(0)
     return StreamingResponse(buf, media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{challenge.slug}.zip"'})
